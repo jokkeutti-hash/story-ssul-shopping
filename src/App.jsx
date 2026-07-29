@@ -1036,8 +1036,8 @@ IMPORTANT: The ai_prompt MUST:
     { id: "aliexpress",label: "알리",      color: "#FF6A00", query: "site:aliexpress.com",    domain: "aliexpress.com" },
     { id: "11st",     label: "11번가",     color: "#E8380D", query: "site:11st.co.kr",        domain: "11st.co.kr" },
     { id: "gmarket",  label: "G마켓",      color: "#B50029", query: "site:gmarket.co.kr",     domain: "gmarket.co.kr" },
-    { id: "kakao",    label: "카카오쇼핑",  color: "#FFCD00", query: "site:shopping.kakao.com", domain: "shopping.kakao.com" },
-    { id: "toss",     label: "토스쇼핑",    color: "#0064FF", query: "site:shopping.toss.im",  domain: "shopping.toss.im" },
+    { id: "kakao",    label: "카카오쇼핑",  color: "#FFCD00", query: "카카오쇼핑",  domain: null },
+    { id: "toss",     label: "토스쇼핑",    color: "#0064FF", query: "토스쇼핑",    domain: null },
   ];
 
   const handleDiscover = async () => {
@@ -1059,7 +1059,7 @@ IMPORTANT: The ai_prompt MUST:
         body: JSON.stringify({
           query: searchQuery,
           max_results: 8,
-          include_domains: [plat.domain],
+          ...(plat.domain ? { include_domains: [plat.domain] } : {}),
           search_depth: "advanced",
           include_images: true,
           include_image_descriptions: true,
