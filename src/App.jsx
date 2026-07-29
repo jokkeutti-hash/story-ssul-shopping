@@ -1036,8 +1036,6 @@ IMPORTANT: The ai_prompt MUST:
     { id: "aliexpress",label: "알리",      color: "#FF6A00", query: "site:aliexpress.com",    domain: "aliexpress.com" },
     { id: "11st",     label: "11번가",     color: "#E8380D", query: "site:11st.co.kr",        domain: "11st.co.kr" },
     { id: "gmarket",  label: "G마켓",      color: "#B50029", query: "site:gmarket.co.kr",     domain: "gmarket.co.kr" },
-    { id: "kakao",    label: "카카오쇼핑",  color: "#FFCD00", query: "카카오쇼핑",  domain: null },
-    { id: "toss",     label: "토스쇼핑",    color: "#0064FF", query: "토스쇼핑",    domain: null },
   ];
 
   const handleDiscover = async () => {
@@ -1068,11 +1066,16 @@ IMPORTANT: The ai_prompt MUST:
       if (!searchRes.ok) throw new Error(`Tavily 검색 오류 ${searchRes.status}`);
       const searchData = await searchRes.json();
       const results = searchData.results || [];
-      const foundImages = (searchData.images || []).map(img =>
-        typeof img === "string" ? { url: img, description: "" } : { url: img.url, description: img.description || "" }
-      );
 
       if (!results.length) throw new Error("검색 결과가 없습니다. 키워드를 바꿔보세요.");
+
+      // 각 검색결과 자체의 이미지를 URL 기준으로 매핑 (AI가 URL을 베껴 쓰게 하는 것보다 안정적)
+      const urlToImage = {};
+      results.forEach(r => {
+        const imgs = r.images || [];
+        const first = imgs[0];
+        if (first) urlToImage[r.url] = typeof first === "string" ? first : first.url;
+      });
 
       // Step 2: AI로 상품별 분석 + 수익성 평가
       setDiscoverStep(`🤖 AI가 상품 수익성·트렌드 분석 중...`);
@@ -1080,18 +1083,11 @@ IMPORTANT: The ai_prompt MUST:
         `${i + 1}. 제목: ${r.title}\nURL: ${r.url}\n내용: ${(r.content || "").slice(0, 200)}`
       ).join("\n\n");
 
-      const imageList = foundImages.length
-        ? foundImages.map((img, i) => `${i + 1}. ${img.url}${img.description ? ` — ${img.description}` : ""}`).join("\n")
-        : "(이미지 없음)";
-
       const analyzePrompt = `아래는 ${plat.label}의 "${discoverCategory}" 관련 상품 목록입니다.
 각 상품을 분석해서 JSON으로만 응답. 마크다운 없이 순수 JSON.
 
 상품 목록:
 ${productList}
-
-검색 중 발견된 이미지 목록 (상품과 가장 잘 맞는 것을 골라 image_url에 사용, 맞는 게 없으면 빈 문자열):
-${imageList}
 
 분석 기준:
 - 판매량·리뷰 수 (많을수록 좋음)
@@ -1103,8 +1099,7 @@ ${imageList}
   {
     "rank": 1,
     "name": "상품명",
-    "url": "URL",
-    "image_url": "위 이미지 목록 중 이 상품과 가장 관련 있는 이미지 URL (없으면 빈 문자열)",
+    "url": "위 상품 목록에 있는 URL을 정확히 그대로 복사",
     "price_range": "가격대 (예: 2-5만원)",
     "category": "카테고리",
     "trend_score": 8,
@@ -1122,7 +1117,9 @@ ${imageList}
 
       const raw = await callAI(analyzePrompt);
       const parsed = parseJSON(raw);
-      const products = (parsed.products || []).sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
+      const products = (parsed.products || [])
+        .map(p => ({ ...p, image_url: urlToImage[p.url] || "" }))
+        .sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
       setDiscoverResults(products);
 
     } catch (e) {
@@ -1393,7 +1390,7 @@ USP: ${product.usp}
             <div>
               <div style={{ fontWeight: 700, fontSize: 16 }}>1단계 — 잘 팔리는 상품 탐색</div>
               <div style={{ fontSize: 12, color: "#6060a0", marginTop: 3 }}>
-                쿠팡·네이버·알리·11번가·G마켓·카카오쇼핑·토스쇼핑에서 트렌드 높고 수익성 좋은 상품을 AI가 분석해서 추천해드려요
+                쿠팡·네이버·알리·11번가·G마켓에서 트렌드 높고 수익성 좋은 상품을 AI가 분석해서 추천해드려요
               </div>
             </div>
             {!tavilyKey && (
