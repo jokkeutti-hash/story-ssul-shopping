@@ -1111,7 +1111,7 @@ IMPORTANT: The ai_prompt MUST:
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${tavilyKey}` },
           body: JSON.stringify({
             query: searchQuery,
-            max_results: 8,
+            max_results: 10,
             ...(plat.domain ? { include_domains: [plat.domain] } : {}),
             search_depth: "advanced",
             include_images: true,

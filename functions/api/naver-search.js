@@ -14,7 +14,7 @@ export async function onRequestGet(context) {
   if (!query) return json({ error: "검색어(q)가 필요합니다." }, 400);
   if (!clientId || !clientSecret) return json({ error: "네이버 Client ID/Secret이 필요합니다." }, 400);
 
-  const naverUrl = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&display=20&sort=sim`;
+  const naverUrl = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&display=10&sort=sim`;
   const res = await fetch(naverUrl, {
     headers: { "X-Naver-Client-Id": clientId, "X-Naver-Client-Secret": clientSecret },
   });

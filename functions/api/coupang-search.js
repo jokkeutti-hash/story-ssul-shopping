@@ -32,7 +32,7 @@ export async function onRequestGet(context) {
 
   const method = "GET";
   const path = "/v2/providers/affiliate_open_api/apis/openapi/products/search";
-  const query = `keyword=${encodeURIComponent(keyword)}&limit=20`;
+  const query = `keyword=${encodeURIComponent(keyword)}&limit=10`;
   const date = signedDate();
   const signature = await hmacSha256Hex(secretKey, date + method + path + query);
   const authorization = `CEA algorithm=HmacSHA256, access-key=${accessKey}, signed-date=${date}, signature=${signature}`;
