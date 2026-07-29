@@ -333,6 +333,22 @@ const PLATFORM_CONFIGS = {
     policy:"네이버 쇼핑 판매자 정책, 가격·스펙 정확성 필수, 후기 조작 금지",
     caption_tip:"스마트스토어 링크, 쿠폰 코드 강조, 리뷰 유도 문구",
   },
+  kakao_shopping:  {
+    label:"카카오 쇼핑라이브", icon:"K", color:"#FFCD00", ratio:"9:16", duration:"30-60초",
+    size:"1080×1920px", fps:"30fps", maxSize:"500MB",
+    tone:"쇼호스트 친근한 말투, 카카오 특유의 친밀감, 실시간 소통 강조",
+    style:"가격·혜택 강조, 카카오톡 공유 유도, 카카오페이 연동 구매",
+    policy:"카카오 판매자 정책, 허위·과장 광고 금지, 상품 정보 정확성 필수",
+    caption_tip:"카카오톡 선물하기 연계, 카카오페이 할인 강조, 톡캘린더 알림 유도",
+  },
+  toss_shopping:   {
+    label:"토스 쇼핑", icon:"T₩", color:"#0064FF", ratio:"9:16", duration:"30-60초",
+    size:"1080×1920px", fps:"30fps", maxSize:"500MB",
+    tone:"간결·명확한 혜택 전달, 금액·% 수치 강조, 신뢰감 있는 정보 제공",
+    style:"가격·혜택 강조, 구매 전환 최적화, 토스페이 즉시결제 연동",
+    policy:"금융광고 심의 기준 준수, 과장·허위 혜택 금지, 필수 고지사항 표기",
+    caption_tip:"토스페이 즉시결제 강조, 혜택 수치 강조, 기간 한정 강조",
+  },
 };
 
 const STORAGE_KEY = "pvps_sb_v2";
@@ -1613,7 +1629,7 @@ USP: ${product.usp}
             {/* Group: 동영상·커머스 */}
             <div style={{ fontSize: 9, color: "#4a4a6a", fontWeight: 700, letterSpacing: 1, marginBottom: 5 }}>🎥 동영상·커머스</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5, marginBottom: 12 }}>
-              {["youtube_long","naver_tv","coupang_live","naver_shopping"].map(key => {
+              {["youtube_long","naver_tv","coupang_live","naver_shopping","kakao_shopping","toss_shopping"].map(key => {
                 const cfg = PLATFORM_CONFIGS[key]; if (!cfg) return null;
                 return (
                   <button key={key} onClick={() => setPlatform(key)}
