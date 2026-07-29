@@ -1069,12 +1069,13 @@ IMPORTANT: The ai_prompt MUST:
 
       if (!results.length) throw new Error("검색 결과가 없습니다. 키워드를 바꿔보세요.");
 
-      // 각 검색결과 자체의 이미지를 URL 기준으로 매핑 (AI가 URL을 베껴 쓰게 하는 것보다 안정적)
-      const urlToImage = {};
-      results.forEach(r => {
+      // 검색결과별 이미지 추출 (없으면 전역 이미지 목록에서 같은 순번으로 보완)
+      const globalImages = (searchData.images || []).map(img => (typeof img === "string" ? img : img?.url)).filter(Boolean);
+      const resultImages = results.map((r, i) => {
         const imgs = r.images || [];
         const first = imgs[0];
-        if (first) urlToImage[r.url] = typeof first === "string" ? first : first.url;
+        const own = first ? (typeof first === "string" ? first : first.url) : "";
+        return own || globalImages[i] || "";
       });
 
       // Step 2: AI로 상품별 분석 + 수익성 평가
@@ -1098,8 +1099,8 @@ ${productList}
 {"products":[
   {
     "rank": 1,
+    "source_index": 1,
     "name": "상품명",
-    "url": "위 상품 목록에 있는 URL을 정확히 그대로 복사",
     "price_range": "가격대 (예: 2-5만원)",
     "category": "카테고리",
     "trend_score": 8,
@@ -1113,12 +1114,17 @@ ${productList}
     "target": "타겟 고객층",
     "caution": "주의사항 (경쟁 심함/마진 낮음 등, 없으면 없음)"
   }
-]}`;
+]}
+"source_index"는 위 상품 목록의 번호(1부터 시작)를 정확히 그대로 넣으세요 — url/이미지 매칭에 사용됩니다.`;
 
       const raw = await callAI(analyzePrompt);
       const parsed = parseJSON(raw);
       const products = (parsed.products || [])
-        .map(p => ({ ...p, image_url: urlToImage[p.url] || "" }))
+        .map(p => {
+          const idx = Math.max(0, (Number(p.source_index) || 1) - 1);
+          const src = results[idx];
+          return { ...p, url: src?.url || "", image_url: resultImages[idx] || "" };
+        })
         .sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
       setDiscoverResults(products);
 
@@ -1483,7 +1489,7 @@ USP: ${product.usp}
                     onClick={() => handleSelectProduct(product)}>
                     {/* Product image */}
                     {product.image_url && (
-                      <img src={product.image_url} alt={product.name} loading="lazy"
+                      <img src={product.image_url} alt={product.name} loading="lazy" referrerPolicy="no-referrer"
                         onError={e => { e.currentTarget.style.display = "none"; }}
                         style={{ width: "100%", height: 150, objectFit: "cover", display: "block", background: "#070712" }} />
                     )}
