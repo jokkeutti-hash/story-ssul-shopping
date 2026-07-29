@@ -1137,10 +1137,10 @@ IMPORTANT: The ai_prompt MUST:
       setDiscoverStep(`🤖 AI가 상품 수익성·트렌드 분석 중...`);
       const productList = items.map((it, i) => `${i + 1}. 제목: ${it.title}\n${it.content}`).join("\n\n");
 
-      const analyzePrompt = `아래는 ${plat.label}의 "${discoverCategory}" 관련 상품 목록입니다.
+      const analyzePrompt = `아래는 ${plat.label}의 "${discoverCategory}" 관련 상품 목록입니다. 총 ${items.length}개입니다.
 각 상품을 분석해서 JSON으로만 응답. 마크다운 없이 순수 JSON.
 
-상품 목록:
+상품 목록 (총 ${items.length}개):
 ${productList}
 
 분석 기준:
@@ -1148,6 +1148,8 @@ ${productList}
 - 검색 트렌드 (상승 중인 카테고리)
 - 수익률 예상 (마진 높은 상품)
 - 콘텐츠 제작 용이성 (영상 만들기 좋은 상품)
+
+중요: "products" 배열에는 위 상품 목록 ${items.length}개 전부를 빠짐없이 하나씩 분석해서 넣으세요. 절대 1개만 반환하지 마세요 — 반드시 ${items.length}개의 항목을 포함해야 합니다. 아래는 그 중 한 항목의 형식 예시일 뿐입니다:
 
 {"products":[
   {
@@ -1166,9 +1168,10 @@ ${productList}
     "usp": "핵심 셀링포인트 1문장",
     "target": "타겟 고객층",
     "caution": "주의사항 (경쟁 심함/마진 낮음 등, 없으면 없음)"
-  }
+  },
+  { "...": "위와 동일한 형식으로 나머지 상품들도 계속" }
 ]}
-"source_index"는 위 상품 목록의 번호(1부터 시작)를 정확히 그대로 넣으세요 — url/이미지/가격 매칭에 사용됩니다.`;
+"source_index"는 위 상품 목록의 번호(1부터 시작)를 정확히 그대로 넣으세요 — url/이미지/가격 매칭에 사용됩니다. products 배열 길이는 반드시 ${items.length}이어야 합니다.`;
 
       const raw = await callAI(analyzePrompt);
       const parsed = parseJSON(raw);
