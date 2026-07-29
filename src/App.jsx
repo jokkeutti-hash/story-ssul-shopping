@@ -384,13 +384,13 @@ async function callOpenRouter(messages, apiKey, model) {
   return d.choices?.[0]?.message?.content || "";
 }
 
-async function callClaude(messages, apiKey, model, img = null, imgType = "image/jpeg") {
+async function callClaude(messages, apiKey, model, images = []) {
   const formattedMessages = messages.map((m, i) => {
-    if (i === 0 && img) {
+    if (i === 0 && images.length) {
       return {
         role: m.role,
         content: [
-          { type: "image", source: { type: "base64", media_type: imgType, data: img } },
+          ...images.map(img => ({ type: "image", source: { type: "base64", media_type: img.mediaType || "image/jpeg", data: img.base64 } })),
           { type: "text", text: m.content },
         ],
       };
@@ -831,9 +831,8 @@ export default function App() {
   // Input
   const [productUrl, setProductUrl] = useState("");
   const [productDesc, setProductDesc] = useState("");
-  const [image, setImage] = useState(null);
-  const [imageBase64, setImageBase64] = useState(null);
-  const [imageMediaType, setImageMediaType] = useState("image/jpeg");
+  const MAX_IMAGES = 5;
+  const [images, setImages] = useState([]); // [{ previewUrl, base64, mediaType }]
   const fileRef = useRef();
 
   // Config
@@ -865,29 +864,43 @@ export default function App() {
     else if (!cur.includes(id)) setSelectedScenes([...cur, id].sort((a, b) => fw.scenes.findIndex(s => s.id === a) - fw.scenes.findIndex(s => s.id === b)));
   };
 
-  const processFile = useCallback((file) => {
-    if (!file?.type.startsWith("image/")) return;
-    setImage(URL.createObjectURL(file));
-    setImageMediaType(file.type || "image/jpeg");
-    const r = new FileReader();
-    r.onload = e => setImageBase64(e.target.result.split(",")[1]);
-    r.readAsDataURL(file);
+  const processFiles = useCallback((fileList) => {
+    const incoming = Array.from(fileList || []).filter(f => f.type.startsWith("image/"));
+    setImages(prev => {
+      const room = MAX_IMAGES - prev.length;
+      const entries = incoming.slice(0, room).map(file => ({
+        file, previewUrl: URL.createObjectURL(file), base64: null, mediaType: file.type || "image/jpeg",
+      }));
+      entries.forEach(entry => {
+        const r = new FileReader();
+        r.onload = e => {
+          const base64 = e.target.result.split(",")[1];
+          setImages(cur => cur.map(im => im.previewUrl === entry.previewUrl ? { ...im, base64 } : im));
+        };
+        r.readAsDataURL(entry.file);
+      });
+      return [...prev, ...entries.map(({ file, ...rest }) => rest)];
+    });
   }, []);
+  const removeImage = idx => setImages(prev => prev.filter((_, i) => i !== idx));
 
   const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, orKey, claudeKey, kimiKey, tavilyKey, naverClientId, naverClientSecret, coupangAccessKey, coupangSecretKey, affiliateLink }); setShowKeys(false); };
 
-  const callAI = useCallback(async (textPrompt, img = null, imgType = null) => {
+  // refImages: [{ base64, mediaType }] — 여러 장의 실제 상품 사진을 AI에게 함께 전달
+  const callAI = useCallback(async (textPrompt, refImages = []) => {
+    const imgs = refImages.filter(im => im?.base64);
     if (engine === "gemini") {
-      const parts = [];
-      if (img) parts.push({ inline_data: { mime_type: imgType || "image/jpeg", data: img } });
+      const parts = imgs.map(im => ({ inline_data: { mime_type: im.mediaType || "image/jpeg", data: im.base64 } }));
       parts.push({ text: textPrompt });
       return callGemini(parts, geminiKey);
     } else if (engine === "claude") {
-      return callClaude([{ role: "user", content: textPrompt }], claudeKey, claudeModel, img, imgType || "image/jpeg");
+      return callClaude([{ role: "user", content: textPrompt }], claudeKey, claudeModel, imgs);
     } else if (engine === "kimi") {
       return callKimi([{ role: "user", content: textPrompt }], kimiKey, kimiModel);
     } else {
-      const content = img ? [{ type: "image_url", image_url: { url: `data:${imgType};base64,${img}` } }, { type: "text", text: textPrompt }] : textPrompt;
+      const content = imgs.length
+        ? [...imgs.map(im => ({ type: "image_url", image_url: { url: `data:${im.mediaType || "image/jpeg"};base64,${im.base64}` } })), { type: "text", text: textPrompt }]
+        : textPrompt;
       return callOpenRouter([{ role: "user", content }], orKey, orModel);
     }
   }, [engine, geminiKey, claudeKey, claudeModel, kimiKey, kimiModel, orKey, orModel]);
@@ -916,24 +929,26 @@ ${JSON.stringify(info, null, 2)}
 스타일 프롬프트 (반드시 전부 반영): ${style.prompt}
 카메라 무브 (자동 결정됨): ${autoCamera}
 ${brandTone ? `브랜드 톤: ${brandTone}` : ""}
+${info.visual_details ? `\n실제 상품 사진에서 관찰된 특징 (반드시 ai_prompt에 구체적으로 반영, 참고 이미지가 첨부되어 있다면 그 실물 외형을 그대로 묘사할 것): ${info.visual_details}\n` : ""}
 
 위 콘텐츠 정책과 스타일·카메라를 완벽히 반영하여, 이 씬의 영상 프롬프트를 JSON으로만 응답. 마크다운 없이 순수 JSON.
+프롬프트가 길어져도 괜찮으니 최대한 상세하고 정확하게 작성할 것 — 짧게 요약하지 말 것.
 
 IMPORTANT: The ai_prompt MUST:
 1. Include the exact camera movement: "${autoCamera}"
 2. COPY AND INTEGRATE ALL of these style elements exactly as specified: "${style.prompt}"
-3. Be 80+ words in English with highly specific visual detail
-4. Mention specific lighting, color palette, texture, and camera specs from the style
-5. Be 100% YouTube/advertiser-policy compliant
-6. Feature the actual product naturally in the scene
+3. Be 200+ words in English (longer and more detailed is always better — do not summarize or truncate)
+4. Describe, in specific detail: lighting setup (key/fill/rim, direction, color temperature), full color palette, surface textures and materials, precise camera framing and lens characteristics, environment/background detail, and exact product placement
+5. If real product photos were provided, ground every visual detail (color, shape, material, logo/packaging) in what those photos actually show — never invent a different-looking product
+6. Be 100% YouTube/advertiser-policy compliant
 7. The style should be unmistakably recognizable in the final video output
 
 {
-  "visual": "한국어 장면 묘사 3-4문장 (구체적 행동·감정·분위기·${style.label} 스타일 특징 명시)",
+  "visual": "한국어 장면 묘사 4-6문장 (구체적 행동·감정·분위기·${style.label} 스타일 특징 명시, 실제 사진이 있다면 그 외형을 반영)",
   "narration": "나레이션/대사 10-20자 (임팩트)",
   "text_overlay": "화면 텍스트 5-15자",
   "duration": "추천 길이 예: 3-5초",
-  "ai_prompt": "${style.prompt}, camera: ${autoCamera}, [product and scene specific: describe the product placement, human subject if any, specific lighting setup, color palette, atmosphere matching ${style.label} style — minimum 80 words total]",
+  "ai_prompt": "${style.prompt}, camera: ${autoCamera}, [product and scene specific: describe the product placement, human subject if any, detailed lighting setup, full color palette, materials/textures, environment, atmosphere matching ${style.label} style — minimum 200 words total, highly detailed]",
   "negative_prompt": "${styleNeg}, violence, gore, sexual content, nudity, hate symbols, dangerous activities, misleading imagery, copyrighted characters, watermark, low quality"
 }`;
   }, [fw, platCfg, brandTone]);
@@ -942,7 +957,7 @@ IMPORTANT: The ai_prompt MUST:
   const handleGenerate = async () => {
     const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
     if (!apiKey) { setError("API 키를 먼저 입력해주세요."); return; }
-    if (!productUrl && !productDesc && !imageBase64) { setError("상품 URL, 설명, 또는 이미지를 입력하세요."); return; }
+    if (!productUrl && !productDesc && !images.length) { setError("상품 URL, 설명, 또는 이미지를 입력하세요."); return; }
 
     setError(""); setLoading(true); setLoadingPct(5);
     setStoryboard(null); setProductInfo(null);
@@ -965,13 +980,13 @@ IMPORTANT: The ai_prompt MUST:
       }
 
       const rawInfo = await callAI(
-        `상품 정보 JSON으로만 응답. 마크다운 없이.\n${context}${imageBase64 ? "\n[이미지 첨부]" : ""}\n{"name":"상품명","category":"카테고리","price":"가격","usp":"핵심가치 1문장","target":"타겟층","mood":"분위기","keywords":["k1","k2","k3"]}`,
-        imageBase64, imageMediaType
+        `상품 정보 JSON으로만 응답. 마크다운 없이.\n${context}${images.length ? `\n[실제 상품 사진 ${images.length}장 첨부 — 색상·형태·재질·패키지 등 실물 특징을 정확히 반영]` : ""}\n{"name":"상품명","category":"카테고리","price":"가격","usp":"핵심가치 1문장","target":"타겟층","mood":"분위기","keywords":["k1","k2","k3"],"visual_details":"사진에서 관찰되는 색상·형태·재질·질감 등 실제 외형 특징 3-4문장 (사진이 없으면 빈 문자열)"}`,
+        images
       );
       const info = parseJSON(rawInfo);
       setProductInfo(info);
 
-      // 씬별 생성
+      // 씬별 생성 — 업로드한 실제 상품 사진을 씬 프롬프트 생성에도 함께 전달
       const scenes = fw.scenes;
       const result = {};
       for (let i = 0; i < scenes.length; i++) {
@@ -980,7 +995,7 @@ IMPORTANT: The ai_prompt MUST:
         setLoadingStep(`${sc.emoji} ${sc.label} 씬 생성 중... (${i + 1}/${scenes.length})`);
         setLoadingPct(15 + Math.round((i / scenes.length) * 80));
         try {
-          const raw = await callAI(buildScenePrompt(info, sc.id, sc, styleId));
+          const raw = await callAI(buildScenePrompt(info, sc.id, sc, styleId), images);
           result[sc.id] = parseJSON(raw);
         } catch (e) {
           result[sc.id] = { visual: "생성 실패: " + e.message, ai_prompt: "", narration: "", text_overlay: "", duration: "3-5초", negative_prompt: "" };
@@ -1003,7 +1018,7 @@ IMPORTANT: The ai_prompt MUST:
     try {
       const sc = fw.scenes.find(s => s.id === sceneId);
       const styleId = sceneStyles[sceneId] || globalStyle;
-      const raw = await callAI(buildScenePrompt(productInfo, sceneId, sc, styleId));
+      const raw = await callAI(buildScenePrompt(productInfo, sceneId, sc, styleId), images);
       setStoryboard(prev => ({ ...prev, [sceneId]: parseJSON(raw) }));
     } catch (e) { setError("재생성 실패: " + e.message); }
     finally { setRegenScene(null); }
@@ -1034,7 +1049,7 @@ IMPORTANT: The ai_prompt MUST:
   };
 
   const activeKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
-  const canGenerate = !loading && !!activeKey && (!!productUrl || !!productDesc || !!imageBase64);
+  const canGenerate = !loading && !!activeKey && (!!productUrl || !!productDesc || !!images.length);
 
   // ── 1단계: 상품 탐색 ─────────────────────────────────────────────────────
   const DISCOVER_PLATFORMS = [
@@ -1637,19 +1652,23 @@ USP: ${product.usp}
             <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>✏ 상품 설명</div>
             <textarea placeholder="상품명, 특징, 가격, 타겟 등..." value={productDesc} onChange={e => setProductDesc(e.target.value)} rows={2}
               style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "vertical", marginBottom: 8 }} />
-            <div onClick={() => !image && fileRef.current.click()}
-              style={{ border: `2px dashed ${image ? "#4285F460" : "#2a2a3e"}`, borderRadius: 8, background: "#0a0a15", cursor: image ? "default" : "pointer", minHeight: 65, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-              {image ? (
-                <>
-                  <img src={image} alt="" style={{ maxWidth: "100%", maxHeight: 100, objectFit: "contain" }} />
-                  <button onClick={e => { e.stopPropagation(); setImage(null); setImageBase64(null); }}
-                    style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.8)", border: "none", color: "#fff", borderRadius: "50%", width: 20, height: 20, cursor: "pointer", fontSize: 11 }}>✕</button>
-                </>
-              ) : (
-                <div style={{ textAlign: "center", padding: 10, color: "#5a5a7a", fontSize: 11 }}>🖼 이미지 업로드 (선택)</div>
+            <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>🖼 실제 상품 사진 ({images.length}/{MAX_IMAGES}) <span style={{ color: "#4a4a6a" }}>— 여러 장일수록 AI가 실물을 더 정확히 반영</span></div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))", gap: 6 }}>
+              {images.map((im, i) => (
+                <div key={im.previewUrl} style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #2a2a3e", aspectRatio: "1", background: "#0a0a15" }}>
+                  <img src={im.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: im.base64 ? 1 : 0.4 }} />
+                  <button onClick={() => removeImage(i)}
+                    style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.8)", border: "none", color: "#fff", borderRadius: "50%", width: 18, height: 18, cursor: "pointer", fontSize: 10, lineHeight: 1 }}>✕</button>
+                </div>
+              ))}
+              {images.length < MAX_IMAGES && (
+                <div onClick={() => fileRef.current.click()}
+                  style={{ border: "2px dashed #2a2a3e", borderRadius: 8, background: "#0a0a15", cursor: "pointer", aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", color: "#5a5a7a", fontSize: 20 }}>
+                  +
+                </div>
               )}
             </div>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => processFile(e.target.files[0])} />
+            <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={e => { processFiles(e.target.files); e.target.value = ""; }} />
           </div>
 
           {/* Framework */}
