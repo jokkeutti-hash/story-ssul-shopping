@@ -804,6 +804,11 @@ export default function App() {
   const [claudeKey, setClaudeKey] = useState(stored.claudeKey || "");
   const [kimiKey, setKimiKey] = useState(stored.kimiKey || "");
   const [tavilyKey, setTavilyKey] = useState(stored.tavilyKey || "");
+  const [naverClientId, setNaverClientId] = useState(stored.naverClientId || "");
+  const [naverClientSecret, setNaverClientSecret] = useState(stored.naverClientSecret || "");
+  const [coupangAccessKey, setCoupangAccessKey] = useState(stored.coupangAccessKey || "");
+  const [coupangSecretKey, setCoupangSecretKey] = useState(stored.coupangSecretKey || "");
+  const [affiliateLink, setAffiliateLink] = useState(stored.affiliateLink || "");
   const [engine, setEngine] = useState("claude");
   const [orModel, setOrModel] = useState("deepseek/deepseek-v4-flash:free");
   const [claudeModel, setClaudeModel] = useState("claude-haiku-4-5-20251001");
@@ -869,7 +874,7 @@ export default function App() {
     r.readAsDataURL(file);
   }, []);
 
-  const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, orKey, claudeKey, kimiKey, tavilyKey }); setShowKeys(false); };
+  const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, orKey, claudeKey, kimiKey, tavilyKey, naverClientId, naverClientSecret, coupangAccessKey, coupangSecretKey, affiliateLink }); setShowKeys(false); };
 
   const callAI = useCallback(async (textPrompt, img = null, imgType = null) => {
     if (engine === "gemini") {
@@ -1008,6 +1013,7 @@ IMPORTANT: The ai_prompt MUST:
   const exportAll = () => {
     if (!storyboard || !productInfo) return;
     let out = `# 스토리보드 — ${productInfo.name}\n프레임워크: ${fw.label} | 플랫폼: ${platCfg.label} | ${new Date().toLocaleString("ko-KR")}\n\n`;
+    if (affiliateLink) out += `🔗 **구매 링크:** ${affiliateLink}\n\n`;
     fw.scenes.filter(s => activeScenes.includes(s.id)).forEach((sc, i) => {
       const d = storyboard[sc.id]; if (!d) return;
       const styleId = sceneStyles[sc.id] || globalStyle;
@@ -1022,6 +1028,7 @@ IMPORTANT: The ai_prompt MUST:
       if (d.negative_prompt) out += `**네거티브:** ${d.negative_prompt}\n\n`;
       out += `---\n\n`;
     });
+    if (affiliateLink) out += `## 🔗 구매하러 가기\n${affiliateLink}\n`;
     const blob = new Blob([out], { type: "text/markdown" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `storyboard-${Date.now()}.md`; a.click();
   };
@@ -1037,52 +1044,83 @@ IMPORTANT: The ai_prompt MUST:
     { id: "11st",     label: "11번가",     color: "#E8380D", query: "site:11st.co.kr",        domain: "11st.co.kr" },
     { id: "gmarket",  label: "G마켓",      color: "#B50029", query: "site:gmarket.co.kr",     domain: "gmarket.co.kr" },
   ];
+  const canDiscover = !!tavilyKey
+    || (discoverPlatform === "naver" && !!naverClientId && !!naverClientSecret)
+    || (discoverPlatform === "coupang" && !!coupangAccessKey && !!coupangSecretKey);
 
   const handleDiscover = async () => {
-    if (!tavilyKey) { setError("Tavily API 키가 필요합니다. 설정에서 입력해주세요."); return; }
     if (!discoverCategory.trim()) { setError("카테고리나 키워드를 입력해주세요."); return; }
     const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
     if (!apiKey) { setError("AI API 키를 설정해주세요."); return; }
 
-    setDiscoverLoading(true); setDiscoverResults([]); setError("");
     const plat = DISCOVER_PLATFORMS.find(p => p.id === discoverPlatform);
+    const useNaverApi = plat.id === "naver" && naverClientId && naverClientSecret;
+    const useCoupangApi = plat.id === "coupang" && coupangAccessKey && coupangSecretKey;
+    if (!useNaverApi && !useCoupangApi && !tavilyKey) { setError("Tavily API 키가 필요합니다. 설정에서 입력해주세요."); return; }
+
+    setDiscoverLoading(true); setDiscoverResults([]); setError("");
 
     try {
-      // Step 1: Tavily로 인기 상품 검색
-      setDiscoverStep(`🔍 ${plat.label} 인기 상품 검색 중...`);
-      const searchQuery = `${plat.query} ${discoverCategory} 베스트셀러 인기상품 리뷰많은`;
-      const searchRes = await fetch("https://api.tavily.com/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tavilyKey}` },
-        body: JSON.stringify({
-          query: searchQuery,
-          max_results: 8,
-          ...(plat.domain ? { include_domains: [plat.domain] } : {}),
-          search_depth: "advanced",
-          include_images: true,
-          include_image_descriptions: true,
-        }),
-      });
-      if (!searchRes.ok) throw new Error(`Tavily 검색 오류 ${searchRes.status}`);
-      const searchData = await searchRes.json();
-      const results = searchData.results || [];
+      // Step 1: 상품 검색 — 네이버/쿠팡은 키가 있으면 공식 API, 그 외엔 Tavily 웹검색
+      let items = []; // { title, url, image, content, priceText }
 
-      if (!results.length) throw new Error("검색 결과가 없습니다. 키워드를 바꿔보세요.");
+      if (useNaverApi) {
+        setDiscoverStep(`🔍 네이버 쇼핑 공식 API로 검색 중...`);
+        const res = await fetch(`/api/naver-search?q=${encodeURIComponent(discoverCategory)}`, {
+          headers: { "X-Naver-Client-Id": naverClientId, "X-Naver-Client-Secret": naverClientSecret },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `네이버 API 오류 ${res.status}`);
+        items = (data.items || []).map(it => ({
+          title: it.title, url: it.url, image: it.image,
+          content: `쇼핑몰: ${it.mallName || "-"} · 가격: ${it.lprice ? Number(it.lprice).toLocaleString() + "원" : "-"} · 브랜드: ${it.brand || "-"} · 카테고리: ${it.category || "-"}`,
+          priceText: it.lprice ? `${Number(it.lprice).toLocaleString()}원` : "",
+        }));
+      } else if (useCoupangApi) {
+        setDiscoverStep(`🔍 쿠팡파트너스 공식 API로 검색 중...`);
+        const res = await fetch(`/api/coupang-search?q=${encodeURIComponent(discoverCategory)}`, {
+          headers: { "X-Coupang-Access-Key": coupangAccessKey, "X-Coupang-Secret-Key": coupangSecretKey },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `쿠팡 API 오류 ${res.status}`);
+        items = (data.items || []).map(it => ({
+          title: it.title, url: it.url, image: it.image,
+          content: `가격: ${it.price ? Number(it.price).toLocaleString() + "원" : "-"} · 로켓배송: ${it.isRocket ? "예" : "아니오"} · 카테고리: ${it.category || "-"}`,
+          priceText: it.price ? `${Number(it.price).toLocaleString()}원` : "",
+        }));
+      } else {
+        setDiscoverStep(`🔍 ${plat.label} 인기 상품 검색 중...`);
+        const searchQuery = `${plat.query} ${discoverCategory} 베스트셀러 인기상품 리뷰많은`;
+        const searchRes = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${tavilyKey}` },
+          body: JSON.stringify({
+            query: searchQuery,
+            max_results: 8,
+            ...(plat.domain ? { include_domains: [plat.domain] } : {}),
+            search_depth: "advanced",
+            include_images: true,
+            include_image_descriptions: true,
+          }),
+        });
+        if (!searchRes.ok) throw new Error(`Tavily 검색 오류 ${searchRes.status}`);
+        const searchData = await searchRes.json();
+        const results = searchData.results || [];
+        // 검색결과별 이미지 추출 (없으면 전역 이미지 목록에서 같은 순번으로 보완)
+        const globalImages = (searchData.images || []).map(img => (typeof img === "string" ? img : img?.url)).filter(Boolean);
+        items = results.map((r, i) => {
+          const imgs = r.images || [];
+          const first = imgs[0];
+          const own = first ? (typeof first === "string" ? first : first.url) : "";
+          return { title: r.title, url: r.url, image: own || globalImages[i] || "", content: (r.content || "").slice(0, 200), priceText: "" };
+        });
+      }
 
-      // 검색결과별 이미지 추출 (없으면 전역 이미지 목록에서 같은 순번으로 보완)
-      const globalImages = (searchData.images || []).map(img => (typeof img === "string" ? img : img?.url)).filter(Boolean);
-      const resultImages = results.map((r, i) => {
-        const imgs = r.images || [];
-        const first = imgs[0];
-        const own = first ? (typeof first === "string" ? first : first.url) : "";
-        return own || globalImages[i] || "";
-      });
+      if (!items.length) throw new Error("검색 결과가 없습니다. 키워드를 바꿔보세요.");
 
       // Step 2: AI로 상품별 분석 + 수익성 평가
       setDiscoverStep(`🤖 AI가 상품 수익성·트렌드 분석 중...`);
-      const productList = results.map((r, i) =>
-        `${i + 1}. 제목: ${r.title}\nURL: ${r.url}\n내용: ${(r.content || "").slice(0, 200)}`
-      ).join("\n\n");
+      const productList = items.map((it, i) => `${i + 1}. 제목: ${it.title}\n${it.content}`).join("\n\n");
 
       const analyzePrompt = `아래는 ${plat.label}의 "${discoverCategory}" 관련 상품 목록입니다.
 각 상품을 분석해서 JSON으로만 응답. 마크다운 없이 순수 JSON.
@@ -1115,15 +1153,15 @@ ${productList}
     "caution": "주의사항 (경쟁 심함/마진 낮음 등, 없으면 없음)"
   }
 ]}
-"source_index"는 위 상품 목록의 번호(1부터 시작)를 정확히 그대로 넣으세요 — url/이미지 매칭에 사용됩니다.`;
+"source_index"는 위 상품 목록의 번호(1부터 시작)를 정확히 그대로 넣으세요 — url/이미지/가격 매칭에 사용됩니다.`;
 
       const raw = await callAI(analyzePrompt);
       const parsed = parseJSON(raw);
       const products = (parsed.products || [])
         .map(p => {
           const idx = Math.max(0, (Number(p.source_index) || 1) - 1);
-          const src = results[idx];
-          return { ...p, url: src?.url || "", image_url: resultImages[idx] || "" };
+          const src = items[idx];
+          return { ...p, url: src?.url || "", image_url: src?.image || "", price_range: src?.priceText || p.price_range };
         })
         .sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
       setDiscoverResults(products);
@@ -1212,11 +1250,15 @@ USP: ${product.usp}
             {/* Key Fields */}
             <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { id: "gemini",  label: "Google Gemini",     link: "https://aistudio.google.com/app/apikey",         val: geminiKey,  set: setGeminiKey,  ph: "AIzaSy...",    color: "#4285F4", icon: "G",  req: false, info: "무료 1,500/일 · 이미지 분석 가능" },
-                { id: "claude",  label: "Claude (Anthropic)", link: "https://console.anthropic.com/settings/keys",    val: claudeKey,  set: setClaudeKey,  ph: "sk-ant-...",   color: "#D97706", icon: "C",  req: false, info: "Sonnet 4.5 / Opus 4.6 / Haiku 4.5" },
-                { id: "kimi",    label: "Kimi K3 (Moonshot)", link: "https://platform.moonshot.ai",                   val: kimiKey,    set: setKimiKey,    ph: "sk-...",       color: "#06b6d4", icon: "K",  req: false, info: "K3(2.8T·1M ctx) · $1 최소 충전 필요" },
-                { id: "or",      label: "OpenRouter",         link: "https://openrouter.ai/keys",                     val: orKey,      set: setOrKey,      ph: "sk-or-v1-...", color: "#7c3aed", icon: "OR", req: false, info: "DeepSeek V4 Flash 무료 포함" },
-                { id: "tavily",  label: "Tavily (URL 크롤링)", link: "https://tavily.com",                             val: tavilyKey,  set: setTavilyKey,  ph: "tvly-...",     color: "#03C75A", icon: "T",  req: false, info: "무료 1,000/월 · 없어도 동작" },
+                { id: "gemini",  stateKey: "geminiKey",  label: "Google Gemini",     link: "https://aistudio.google.com/app/apikey",         val: geminiKey,  set: setGeminiKey,  ph: "AIzaSy...",    color: "#4285F4", icon: "G",  req: false, info: "무료 1,500/일 · 이미지 분석 가능" },
+                { id: "claude",  stateKey: "claudeKey",  label: "Claude (Anthropic)", link: "https://console.anthropic.com/settings/keys",    val: claudeKey,  set: setClaudeKey,  ph: "sk-ant-...",   color: "#D97706", icon: "C",  req: false, info: "Sonnet 4.5 / Opus 4.6 / Haiku 4.5" },
+                { id: "kimi",    stateKey: "kimiKey",    label: "Kimi K3 (Moonshot)", link: "https://platform.moonshot.ai",                   val: kimiKey,    set: setKimiKey,    ph: "sk-...",       color: "#06b6d4", icon: "K",  req: false, info: "K3(2.8T·1M ctx) · $1 최소 충전 필요" },
+                { id: "or",      stateKey: "orKey",      label: "OpenRouter",         link: "https://openrouter.ai/keys",                     val: orKey,      set: setOrKey,      ph: "sk-or-v1-...", color: "#7c3aed", icon: "OR", req: false, info: "DeepSeek V4 Flash 무료 포함" },
+                { id: "tavily",  stateKey: "tavilyKey",  label: "Tavily (URL 크롤링)", link: "https://tavily.com",                             val: tavilyKey,  set: setTavilyKey,  ph: "tvly-...",     color: "#03C75A", icon: "T",  req: false, info: "무료 1,000/월 · 없어도 동작" },
+                { id: "naverId",     stateKey: "naverClientId",     label: "네이버 Client ID",     link: "https://developers.naver.com/apps/#/register", val: naverClientId,     set: setNaverClientId,     ph: "Client ID",     color: "#03C75A", icon: "N",  req: false, info: "쇼핑 검색 API · 상품탐색 1단계용 · 없어도 동작" },
+                { id: "naverSecret", stateKey: "naverClientSecret", label: "네이버 Client Secret", link: "https://developers.naver.com/apps/#/register", val: naverClientSecret, set: setNaverClientSecret, ph: "Client Secret", color: "#03C75A", icon: "N",  req: false, info: "네이버 Client ID와 한 쌍" },
+                { id: "coupangAccess", stateKey: "coupangAccessKey", label: "쿠팡파트너스 ACCESS KEY", link: "https://partners.coupang.com", val: coupangAccessKey, set: setCoupangAccessKey, ph: "ACCESS KEY", color: "#FF5722", icon: "C",  req: false, info: "상품검색 API · 시간당 10회 제한 · 없어도 동작" },
+                { id: "coupangSecret", stateKey: "coupangSecretKey", label: "쿠팡파트너스 SECRET KEY", link: "https://partners.coupang.com", val: coupangSecretKey, set: setCoupangSecretKey, ph: "SECRET KEY", color: "#FF5722", icon: "C",  req: false, info: "쿠팡 ACCESS KEY와 한 쌍" },
               ].map(f => (
                 <div key={f.id} style={{ background: "#12122a", border: `1px solid ${f.val ? f.color + "50" : "#2a2a3e"}`, borderRadius: 13, padding: 14, transition: "border 0.2s" }}>
                   {/* Label row */}
@@ -1248,7 +1290,7 @@ USP: ${product.usp}
                     {/* Save single key */}
                     <button
                       onClick={() => {
-                        const next = { geminiKey, claudeKey, kimiKey, orKey: orKey, tavilyKey };
+                        const next = { geminiKey, claudeKey, kimiKey, orKey, tavilyKey, naverClientId, naverClientSecret, coupangAccessKey, coupangSecretKey, affiliateLink };
                         saveStorage({ ...loadStorage(), ...next });
                       }}
                       disabled={!f.val}
@@ -1259,9 +1301,7 @@ USP: ${product.usp}
                     <button
                       onClick={() => {
                         f.set("");
-                        const next = { geminiKey, claudeKey, kimiKey, orKey: orKey, tavilyKey };
-                        next[f.id === "or" ? "orKey" : f.id + "Key"] = "";
-                        saveStorage({ ...loadStorage(), ...next });
+                        saveStorage({ ...loadStorage(), [f.stateKey]: "" });
                       }}
                       disabled={!f.val}
                       style={{ background: f.val ? "#2a0808" : "#1a1a1a", border: `1px solid ${f.val ? "#5a1a1a" : "#2a2a2a"}`, borderRadius: 7, padding: "5px 12px", color: f.val ? "#ff6060" : "#3a3a3a", fontSize: 11, fontWeight: 700, cursor: f.val ? "pointer" : "not-allowed", transition: "all 0.15s" }}>
@@ -1270,6 +1310,24 @@ USP: ${product.usp}
                   </div>
                 </div>
               ))}
+
+              {/* Affiliate link */}
+              <div style={{ background: "#12122a", border: `1px solid ${affiliateLink ? "#f59e0b50" : "#2a2a3e"}`, borderRadius: 13, padding: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: 7, background: affiliateLink ? "#f59e0b" : "#2a2a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>🔗</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c8e0" }}>내 제휴 링크</div>
+                    <div style={{ fontSize: 10, color: "#4a4a6a", marginTop: 1 }}>쿠팡파트너스 / 네이버 제휴 링크 · MD 내보내기 결과물에 자동 삽입</div>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="https://link.coupang.com/a/... 또는 제휴 링크"
+                  value={affiliateLink}
+                  onChange={e => setAffiliateLink(e.target.value)}
+                  style={{ width: "100%", background: "#0d0d1a", border: `1px solid ${affiliateLink ? "#f59e0b60" : "#2a2a3e"}`, borderRadius: 9, padding: "9px 12px", color: "#e8e8f0", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
 
               {/* Engine + Model selector */}
               <div style={{ background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 13, padding: 14 }}>
@@ -1399,9 +1457,9 @@ USP: ${product.usp}
                 쿠팡·네이버·알리·11번가·G마켓에서 트렌드 높고 수익성 좋은 상품을 AI가 분석해서 추천해드려요
               </div>
             </div>
-            {!tavilyKey && (
+            {!canDiscover && (
               <div style={{ marginLeft: "auto", background: "#1a1200", border: "1px solid #3a2a00", borderRadius: 9, padding: "8px 12px", fontSize: 11, color: "#f59e0b" }}>
-                ⚠ Tavily API 키 필요<br />
+                ⚠ {discoverPlatform === "naver" ? "네이버 Client ID/Secret 필요" : discoverPlatform === "coupang" ? "쿠팡 ACCESS/SECRET KEY 필요 (또는 Tavily)" : "Tavily API 키 필요"}<br />
                 <button onClick={() => setShowKeys(true)} style={{ background: "none", border: "none", color: "#f59e0b", cursor: "pointer", fontSize: 10, textDecoration: "underline", padding: 0 }}>설정에서 입력 →</button>
               </div>
             )}
@@ -1443,8 +1501,8 @@ USP: ${product.usp}
                 </div>
               </div>
 
-              <button onClick={handleDiscover} disabled={discoverLoading || !discoverCategory || !tavilyKey}
-                style={{ background: (!discoverLoading && discoverCategory && tavilyKey) ? `linear-gradient(135deg,${fw.color},#03C75A)` : "#1e1e2e", border: "none", borderRadius: 10, padding: "12px", color: (!discoverLoading && discoverCategory && tavilyKey) ? "#fff" : "#5a5a7a", fontWeight: 700, fontSize: 13, cursor: (!discoverLoading && discoverCategory && tavilyKey) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <button onClick={handleDiscover} disabled={discoverLoading || !discoverCategory || !canDiscover}
+                style={{ background: (!discoverLoading && discoverCategory && canDiscover) ? `linear-gradient(135deg,${fw.color},#03C75A)` : "#1e1e2e", border: "none", borderRadius: 10, padding: "12px", color: (!discoverLoading && discoverCategory && canDiscover) ? "#fff" : "#5a5a7a", fontWeight: 700, fontSize: 13, cursor: (!discoverLoading && discoverCategory && canDiscover) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 {discoverLoading ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> {discoverStep}</> : `🔍 ${DISCOVER_PLATFORMS.find(p => p.id === discoverPlatform)?.label} 상품 탐색`}
               </button>
             </div>
