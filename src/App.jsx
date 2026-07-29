@@ -1034,6 +1034,8 @@ IMPORTANT: The ai_prompt MUST:
     { id: "coupang",  label: "쿠팡",       color: "#FF5722", query: "site:coupang.com",       domain: "coupang.com" },
     { id: "naver",    label: "네이버쇼핑",  color: "#03C75A", query: "site:smartstore.naver.com", domain: "smartstore.naver.com" },
     { id: "aliexpress",label: "알리",      color: "#FF6A00", query: "site:aliexpress.com",    domain: "aliexpress.com" },
+    { id: "11st",     label: "11번가",     color: "#E8380D", query: "site:11st.co.kr",        domain: "11st.co.kr" },
+    { id: "gmarket",  label: "G마켓",      color: "#B50029", query: "site:gmarket.co.kr",     domain: "gmarket.co.kr" },
     { id: "kakao",    label: "카카오쇼핑",  color: "#FFCD00", query: "site:shopping.kakao.com", domain: "shopping.kakao.com" },
     { id: "toss",     label: "토스쇼핑",    color: "#0064FF", query: "site:shopping.toss.im",  domain: "shopping.toss.im" },
   ];
@@ -1391,7 +1393,7 @@ USP: ${product.usp}
             <div>
               <div style={{ fontWeight: 700, fontSize: 16 }}>1단계 — 잘 팔리는 상품 탐색</div>
               <div style={{ fontSize: 12, color: "#6060a0", marginTop: 3 }}>
-                쿠팡·네이버·알리·카카오쇼핑·토스쇼핑에서 트렌드 높고 수익성 좋은 상품을 AI가 분석해서 추천해드려요
+                쿠팡·네이버·알리·11번가·G마켓·카카오쇼핑·토스쇼핑에서 트렌드 높고 수익성 좋은 상품을 AI가 분석해서 추천해드려요
               </div>
             </div>
             {!tavilyKey && (
