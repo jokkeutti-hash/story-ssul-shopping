@@ -1034,8 +1034,8 @@ IMPORTANT: The ai_prompt MUST:
     { id: "coupang",  label: "쿠팡",       color: "#FF5722", query: "site:coupang.com",       domain: "coupang.com" },
     { id: "naver",    label: "네이버쇼핑",  color: "#03C75A", query: "site:smartstore.naver.com", domain: "smartstore.naver.com" },
     { id: "aliexpress",label: "알리",      color: "#FF6A00", query: "site:aliexpress.com",    domain: "aliexpress.com" },
-    { id: "11st",     label: "11번가",     color: "#E8380D", query: "site:11st.co.kr",        domain: "11st.co.kr" },
-    { id: "gmarket",  label: "G마켓",      color: "#B50029", query: "site:gmarket.co.kr",     domain: "gmarket.co.kr" },
+    { id: "kakao",    label: "카카오쇼핑",  color: "#FFCD00", query: "site:shopping.kakao.com", domain: "shopping.kakao.com" },
+    { id: "toss",     label: "토스쇼핑",    color: "#0064FF", query: "site:shopping.toss.im",  domain: "shopping.toss.im" },
   ];
 
   const handleDiscover = async () => {
@@ -1059,11 +1059,16 @@ IMPORTANT: The ai_prompt MUST:
           max_results: 8,
           include_domains: [plat.domain],
           search_depth: "advanced",
+          include_images: true,
+          include_image_descriptions: true,
         }),
       });
       if (!searchRes.ok) throw new Error(`Tavily 검색 오류 ${searchRes.status}`);
       const searchData = await searchRes.json();
       const results = searchData.results || [];
+      const foundImages = (searchData.images || []).map(img =>
+        typeof img === "string" ? { url: img, description: "" } : { url: img.url, description: img.description || "" }
+      );
 
       if (!results.length) throw new Error("검색 결과가 없습니다. 키워드를 바꿔보세요.");
 
@@ -1073,11 +1078,18 @@ IMPORTANT: The ai_prompt MUST:
         `${i + 1}. 제목: ${r.title}\nURL: ${r.url}\n내용: ${(r.content || "").slice(0, 200)}`
       ).join("\n\n");
 
+      const imageList = foundImages.length
+        ? foundImages.map((img, i) => `${i + 1}. ${img.url}${img.description ? ` — ${img.description}` : ""}`).join("\n")
+        : "(이미지 없음)";
+
       const analyzePrompt = `아래는 ${plat.label}의 "${discoverCategory}" 관련 상품 목록입니다.
 각 상품을 분석해서 JSON으로만 응답. 마크다운 없이 순수 JSON.
 
 상품 목록:
 ${productList}
+
+검색 중 발견된 이미지 목록 (상품과 가장 잘 맞는 것을 골라 image_url에 사용, 맞는 게 없으면 빈 문자열):
+${imageList}
 
 분석 기준:
 - 판매량·리뷰 수 (많을수록 좋음)
@@ -1090,6 +1102,7 @@ ${productList}
     "rank": 1,
     "name": "상품명",
     "url": "URL",
+    "image_url": "위 이미지 목록 중 이 상품과 가장 관련 있는 이미지 URL (없으면 빈 문자열)",
     "price_range": "가격대 (예: 2-5만원)",
     "category": "카테고리",
     "trend_score": 8,
@@ -1378,7 +1391,7 @@ USP: ${product.usp}
             <div>
               <div style={{ fontWeight: 700, fontSize: 16 }}>1단계 — 잘 팔리는 상품 탐색</div>
               <div style={{ fontSize: 12, color: "#6060a0", marginTop: 3 }}>
-                쿠팡·네이버·알리·11번가·G마켓에서 트렌드 높고 수익성 좋은 상품을 AI가 분석해서 추천해드려요
+                쿠팡·네이버·알리·카카오쇼핑·토스쇼핑에서 트렌드 높고 수익성 좋은 상품을 AI가 분석해서 추천해드려요
               </div>
             </div>
             {!tavilyKey && (
@@ -1467,8 +1480,15 @@ USP: ${product.usp}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
                 {discoverResults.map((product, i) => (
-                  <div key={i} style={{ background: "#0d0d1a", border: `2px solid ${i === 0 ? fw.color + "60" : "#1e1e2e"}`, borderRadius: 14, padding: 16, position: "relative", cursor: "pointer", transition: "all 0.2s" }}
+                  <div key={i} style={{ background: "#0d0d1a", border: `2px solid ${i === 0 ? fw.color + "60" : "#1e1e2e"}`, borderRadius: 14, overflow: "hidden", position: "relative", cursor: "pointer", transition: "all 0.2s" }}
                     onClick={() => handleSelectProduct(product)}>
+                    {/* Product image */}
+                    {product.image_url && (
+                      <img src={product.image_url} alt={product.name} loading="lazy"
+                        onError={e => { e.currentTarget.style.display = "none"; }}
+                        style={{ width: "100%", height: 150, objectFit: "cover", display: "block", background: "#070712" }} />
+                    )}
+                    <div style={{ padding: 16, position: "relative" }}>
                     {/* Rank badge */}
                     <div style={{ position: "absolute", top: 12, right: 12, width: 28, height: 28, borderRadius: "50%", background: i === 0 ? fw.color : "#2a2a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, color: "#fff" }}>
                       {i + 1}
@@ -1518,6 +1538,7 @@ USP: ${product.usp}
                     <button style={{ width: "100%", marginTop: 10, background: `linear-gradient(135deg,${fw.color},#7c3aed)`, border: "none", borderRadius: 9, padding: "9px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
                       이 상품으로 스토리보드 만들기 →
                     </button>
+                    </div>
                   </div>
                 ))}
               </div>
