@@ -1178,7 +1178,7 @@ USP: ${product.usp}
             {/* Key Fields */}
             <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { id: "gemini",  label: "Google Gemini",     link: "https://aistudio.google.com/app/apikey",         val: geminiKey,  set: setGeminiKey,  ph: "AIzaSy...",    color: "#4285F4", icon: "G",  req: true,  info: "무료 1,500/일 · 이미지 분석 가능" },
+                { id: "gemini",  label: "Google Gemini",     link: "https://aistudio.google.com/app/apikey",         val: geminiKey,  set: setGeminiKey,  ph: "AIzaSy...",    color: "#4285F4", icon: "G",  req: false, info: "무료 1,500/일 · 이미지 분석 가능" },
                 { id: "claude",  label: "Claude (Anthropic)", link: "https://console.anthropic.com/settings/keys",    val: claudeKey,  set: setClaudeKey,  ph: "sk-ant-...",   color: "#D97706", icon: "C",  req: false, info: "Sonnet 4.5 / Opus 4.6 / Haiku 4.5" },
                 { id: "kimi",    label: "Kimi K3 (Moonshot)", link: "https://platform.moonshot.ai",                   val: kimiKey,    set: setKimiKey,    ph: "sk-...",       color: "#06b6d4", icon: "K",  req: false, info: "K3(2.8T·1M ctx) · $1 최소 충전 필요" },
                 { id: "or",      label: "OpenRouter",         link: "https://openrouter.ai/keys",                     val: orKey,      set: setOrKey,      ph: "sk-or-v1-...", color: "#7c3aed", icon: "OR", req: false, info: "DeepSeek V4 Flash 무료 포함" },
