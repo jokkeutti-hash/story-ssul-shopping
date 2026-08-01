@@ -1598,9 +1598,15 @@ USP: ${product.usp}
                     )}
 
                     {/* CTA */}
-                    <button style={{ width: "100%", marginTop: 10, background: `linear-gradient(135deg,${fw.color},#7c3aed)`, border: "none", borderRadius: 9, padding: "9px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-                      이 상품으로 스토리보드 만들기 →
-                    </button>
+                    <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                      <button onClick={e => { e.stopPropagation(); copy(product.url, `disc-url-${i}`); }} disabled={!product.url}
+                        style={{ background: "#1e1e2e", border: "1px solid #2a2a3e", borderRadius: 9, padding: "9px 12px", color: copiedKey === `disc-url-${i}` ? "#03C75A" : "#9090b0", fontWeight: 700, fontSize: 12, cursor: product.url ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>
+                        {copiedKey === `disc-url-${i}` ? "✓ 복사됨" : "🔗 링크 복사"}
+                      </button>
+                      <button style={{ flex: 1, background: `linear-gradient(135deg,${fw.color},#7c3aed)`, border: "none", borderRadius: 9, padding: "9px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                        이 상품으로 스토리보드 만들기 →
+                      </button>
+                    </div>
                     </div>
                   </div>
                 ))}
