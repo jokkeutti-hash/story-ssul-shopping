@@ -1329,24 +1329,6 @@ USP: ${product.usp}
                 </div>
               ))}
 
-              {/* Affiliate link */}
-              <div style={{ background: "#12122a", border: `1px solid ${affiliateLink ? "#f59e0b50" : "#2a2a3e"}`, borderRadius: 13, padding: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: 7, background: affiliateLink ? "#f59e0b" : "#2a2a3e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>🔗</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c8e0" }}>내 제휴 링크</div>
-                    <div style={{ fontSize: 10, color: "#4a4a6a", marginTop: 1 }}>쿠팡파트너스 / 네이버 제휴 링크 · MD 내보내기 결과물에 자동 삽입</div>
-                  </div>
-                </div>
-                <input
-                  type="text"
-                  placeholder="https://link.coupang.com/a/... 또는 제휴 링크"
-                  value={affiliateLink}
-                  onChange={e => setAffiliateLink(e.target.value)}
-                  style={{ width: "100%", background: "#0d0d1a", border: `1px solid ${affiliateLink ? "#f59e0b60" : "#2a2a3e"}`, borderRadius: 9, padding: "9px 12px", color: "#e8e8f0", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                />
-              </div>
-
               {/* Engine + Model selector */}
               <div style={{ background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 13, padding: 14 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#c8c8e0", marginBottom: 12 }}>AI 엔진 · 모델 선택</div>
@@ -1780,6 +1762,15 @@ USP: ${product.usp}
             <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 7 }}>브랜드 톤 (선택)</div>
             <input placeholder="예: 고급스럽고 감성적인, 친근하고 유머러스한..." value={brandTone} onChange={e => setBrandTone(e.target.value)}
               style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+          </div>
+
+          {/* Affiliate link */}
+          <div style={{ background: "#0d0d1a", border: `1px solid ${affiliateLink ? "#f59e0b50" : "#1e1e2e"}`, borderRadius: 12, padding: 12 }}>
+            <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 7 }}>🔗 내 제휴 링크 (선택)</div>
+            <input placeholder="https://link.coupang.com/a/... 또는 제휴 링크" value={affiliateLink}
+              onChange={e => { setAffiliateLink(e.target.value); saveStorage({ ...loadStorage(), affiliateLink: e.target.value }); }}
+              style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+            <div style={{ fontSize: 9, color: "#4a4a6a", marginTop: 5 }}>자동 저장됨 · MD 내보내기 결과물에 자동 삽입됩니다</div>
           </div>
 
           {/* Policy notice */}
