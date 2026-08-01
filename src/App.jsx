@@ -1121,13 +1121,11 @@ IMPORTANT: The ai_prompt MUST:
         if (!searchRes.ok) throw new Error(`Tavily 검색 오류 ${searchRes.status}`);
         const searchData = await searchRes.json();
         const results = searchData.results || [];
-        // 검색결과별 이미지 추출 (없으면 전역 이미지 목록에서 같은 순번으로 보완)
-        const globalImages = (searchData.images || []).map(img => (typeof img === "string" ? img : img?.url)).filter(Boolean);
-        items = results.map((r, i) => {
-          const imgs = r.images || [];
-          const first = imgs[0];
+        // 검색결과 자체에 달려있는 이미지만 사용 — 없으면 빈 값(다른 상품 이미지를 갖다 붙이지 않음)
+        items = results.map(r => {
+          const first = (r.images || [])[0];
           const own = first ? (typeof first === "string" ? first : first.url) : "";
-          return { title: r.title, url: r.url, image: own || globalImages[i] || "", content: (r.content || "").slice(0, 200), priceText: "" };
+          return { title: r.title, url: r.url, image: own, content: (r.content || "").slice(0, 200), priceText: "" };
         });
       }
 
@@ -1148,6 +1146,8 @@ ${productList}
 - 검색 트렌드 (상승 중인 카테고리)
 - 수익률 예상 (마진 높은 상품)
 - 콘텐츠 제작 용이성 (영상 만들기 좋은 상품)
+
+주의: 위 상품 목록에 없는 사실(정확한 가격·리뷰 수 등)을 지어내지 마세요. 정보가 부족하면 "가격대"나 "리뷰 수"는 "정보 부족" 또는 대략적 추정으로 표기하고, trend_score·profit_score·content_score는 주어진 제목/내용만으로 합리적으로 판단하세요.
 
 중요: "products" 배열에는 위 상품 목록 ${items.length}개 전부를 빠짐없이 하나씩 분석해서 넣으세요. 절대 1개만 반환하지 마세요 — 반드시 ${items.length}개의 항목을 포함해야 합니다. 아래는 그 중 한 항목의 형식 예시일 뿐입니다:
 
@@ -1179,7 +1179,7 @@ ${productList}
         .map(p => {
           const idx = Math.max(0, (Number(p.source_index) || 1) - 1);
           const src = items[idx];
-          return { ...p, url: src?.url || "", image_url: src?.image || "", price_range: src?.priceText || p.price_range };
+          return { ...p, name: src?.title || p.name || "", url: src?.url || "", image_url: src?.image || "", price_range: src?.priceText || p.price_range };
         })
         .sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
       setDiscoverResults(products);
