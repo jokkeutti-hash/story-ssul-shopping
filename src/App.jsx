@@ -299,6 +299,14 @@ const PLATFORM_CONFIGS = {
     policy:"카카오 이용약관 준수, 개인정보·저작권 침해 금지",
     caption_tip:"짧은 감성 문구, 이모지 적극 사용, 댓글 유도",
   },
+  danggeun:        {
+    label:"당근마켓", icon:"🥕", color:"#FF8100", ratio:"9:16", duration:"15-30초",
+    size:"1080×1920px", fps:"24-30fps", maxSize:"100MB",
+    tone:"동네 이웃에게 말하듯 친근한 반말·구어체, 꾸미지 않은 직거래 느낌, 신뢰감",
+    style:"소박·친근한 동네 감성, 직거래 강조, 가격 흥정 가능 뉘앙스, 과장 없는 진솔함",
+    policy:"당근마켓 이용정책 준수, 허위매물·사기 금지, 실제 상태 그대로 표현",
+    caption_tip:"동네 이름·거래 지역 언급, 가격 제시, 직거래 장소·시간 안내",
+  },
   // ── 동영상 플랫폼 ────────────────────────────────────────────────────────
   youtube_long:    {
     label:"YouTube (롱폼)", icon:"YT", color:"#CC0000", ratio:"16:9", duration:"5-15분",
@@ -1708,7 +1716,7 @@ USP: ${product.usp}
             {/* Group: 국내 숏폼 */}
             <div style={{ fontSize: 9, color: "#4a4a6a", fontWeight: 700, letterSpacing: 1, marginBottom: 5 }}>🇰🇷 국내 숏폼</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5, marginBottom: 10 }}>
-              {["naver_clip","kakaotalk_pung","toss_shortform","kakaostory"].map(key => {
+              {["naver_clip","kakaotalk_pung","toss_shortform","kakaostory","danggeun"].map(key => {
                 const cfg = PLATFORM_CONFIGS[key]; if (!cfg) return null;
                 return (
                   <button key={key} onClick={() => setPlatform(key)}
