@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, Fragment } from "react";
 
 // ─── YouTube & Image Policy Safety Rules ─────────────────────────────────────
 // 모든 생성 프롬프트에 자동 삽입되는 정책 가이드라인
@@ -134,63 +134,63 @@ const STORY_FRAMEWORKS = {
 const IMAGE_STYLES = [
   {
     id: "cinematic", label: "시네마틱", emoji: "🎬", desc: "영화급 조명·색보정",
-    prompt: "cinematic film photography, anamorphic 2.39:1 widescreen, dramatic Rembrandt lighting with deep shadows and bright highlights, shallow depth of field f/1.8, color graded with teal-and-orange LUT, lens flare from practical light source, 35mm film grain overlay, ARRI Alexa camera look, professional film set quality, bokeh background, motivated lighting from single key light",
-    negative: "avoid: flat lighting, overexposed, digital look, amateur, no grain, cartoon",
+    prompt: "cinematic film photography, anamorphic 2.39:1 widescreen, dramatic Rembrandt lighting with deep shadows and bright highlights, shallow depth of field f/1.8, color graded with teal-and-orange LUT, lens flare from practical light source, 35mm film grain overlay, ARRI Alexa camera look, professional film set quality, bokeh background, motivated lighting from single key light, volumetric haze catching light shafts, subtle vignette darkening frame edges, layered foreground-midground-background depth separation, meticulous production-design set dressing, Denis Villeneuve-inspired epic scale and grandeur",
+    negative: "avoid: flat lighting, overexposed, digital look, amateur, no grain, cartoon, cluttered composition, flat single-plane depth",
   },
   {
-    id: "anime", label: "애니메이션", emoji: "🎌", desc: "일본 애니 스타일",
-    prompt: "high-quality Japanese anime style, Studio Ghibli and Makoto Shinkai inspired, clean precise line art with consistent stroke weight, cel-shading with soft gradient fills, vibrant saturated color palette, speed lines for motion, detailed background illustration, large expressive eyes, hair with individual strand highlights, sakura petals or sparkle effects, 2D hand-drawn aesthetic",
-    negative: "avoid: 3D render, realistic photography, CGI, blurry lines, Western cartoon style",
+    id: "anime", label: "애니메이션 (시티팝)", emoji: "🌆", desc: "80년대 시티팝 감성 애니",
+    prompt: "1980s Japanese City Pop album cover art style fused with high-quality anime illustration, Hiroshi Nagai and Eizin Suzuki inspired retro travel-poster aesthetic, warm airbrushed gradient sunset sky in pink-orange-purple, glossy palm trees and retro convertible cars, minimalist flat geometric Japanese coastal cityscape silhouettes, nostalgic vaporwave-adjacent warm color palette, soft glowing rim highlights, clean anime-style character line art with 80s fashion and feathered hairstyles when characters appear, warm golden-hour haze, vintage vinyl-cover composition, subtle halftone grain, dreamy nostalgic retro mood",
+    negative: "avoid: 3D render, realistic photography, CGI, blurry lines, Western cartoon style, cold blue-toned modern cyberpunk neon, contemporary flat corporate illustration",
   },
   {
-    id: "watercolor", label: "수채화", emoji: "🎨", desc: "감성 수채화풍",
-    prompt: "traditional watercolor painting on textured cold-press paper, wet-on-wet bleeding edges, granulation texture visible in washes, white paper showing through highlights, loose gestural brush marks, limited palette of 4-5 harmonious colors, pigment pooling in shadows, soft diffused edges, translucent layered glazes, impressionistic rendering, visible paper tooth texture, painterly imperfection",
-    negative: "avoid: digital smooth gradients, sharp edges, photorealistic, heavy outlines, oil paint texture",
+    id: "watercolor", label: "수채화", emoji: "🎨", desc: "감성 반실사 일러스트풍",
+    prompt: "semi-realistic digital painting illustration, Korean webtoon/mobile-game key-visual quality, soft painterly brushwork blended with photographic-level lighting and depth of field, individually rendered flowing hair strands with wind motion, warm golden-hour cinematic color grading, glossy soft skin shading with warm undertones, clean fine linework balanced with painterly color blending (not flat cel-shading, not heavy black outlines), atmospheric background softly out of focus like a shallow-depth photo, dynamic candid lifestyle pose and angle, rich environmental detail (foliage, water, architecture) rendered in the same soft painterly treatment as the subject, dreamy nostalgic warm mood",
+    negative: "avoid: flat cel-shaded anime look, traditional watercolor paper texture or paint bleeding, plastic/artificial CGI skin, harsh 3D render look, heavy black outlines, cold color tones",
   },
   {
     id: "neon_cyberpunk", label: "네온·사이버펑크", emoji: "🌃", desc: "미래적 네온 감성",
-    prompt: "cyberpunk neon noir aesthetic, rain-soaked reflective streets at night, magenta and cyan volumetric neon signs, atmospheric fog with god rays, high contrast deep blacks with vivid neon fills, holographic UI overlays, wet ground reflections doubling neon colors, dystopian urban environment, blade runner inspired color palette, rim lighting from neon sources, chromatic aberration effect",
-    negative: "avoid: daylight, natural colors, warm tones, clean environment, low contrast",
+    prompt: "cyberpunk neon noir aesthetic, rain-soaked reflective streets at night, magenta and cyan volumetric neon signs, atmospheric fog with god rays, high contrast deep blacks with vivid neon fills, holographic UI overlays, wet ground reflections doubling neon colors, dystopian urban environment, blade runner inspired color palette, rim lighting from neon sources, chromatic aberration effect, wet asphalt and brushed chrome surface reflections, layered neon signage receding into fog for depth, steam rising from street vents, low camera angle looking up at towering holographic billboards, Blade Runner 2049-scale futuristic megacity atmosphere",
+    negative: "avoid: daylight, natural colors, warm tones, clean environment, low contrast, dry surfaces, flat single-layer background",
   },
   {
     id: "minimal", label: "미니멀", emoji: "⬜", desc: "깔끔한 미니멀리즘",
-    prompt: "pure minimalist composition, vast negative space on clean white or off-white background, single hero subject centered or rule-of-thirds placed, razor-sharp focus with no distractions, flat diffused studio lighting eliminating all shadows, muted monochromatic color palette with one accent hue, precise geometric composition, Swiss graphic design principles, breathing room around subject, no texture",
-    negative: "avoid: busy background, multiple subjects, dark tones, texture, clutter, vibrant colors",
+    prompt: "pure minimalist composition, vast negative space on clean white or off-white background, single hero subject centered or rule-of-thirds placed, razor-sharp focus with no distractions, flat diffused studio lighting eliminating all shadows, muted monochromatic color palette with one accent hue, precise geometric composition, Swiss graphic design principles, breathing room around subject, no texture, single softbox positioned at 45 degrees casting a barely-visible soft shadow gradient beneath the subject, Muji/Aesop-inspired restrained tonal palette, subject occupying no more than 20% of frame area, precise alignment to an invisible grid",
+    negative: "avoid: busy background, multiple subjects, dark tones, texture, clutter, vibrant colors, hard shadows, cramped composition",
   },
   {
     id: "vintage", label: "빈티지·필름", emoji: "📷", desc: "레트로 필름 감성",
-    prompt: "Kodak Portra 400 film photography aesthetic, warm faded analog tones with lifted blacks, heavy film grain noise especially in shadows, slight color shift toward orange in midtones, cyan in shadows, light leaks in corners, vignette darkening edges, slightly soft focus from vintage lens, 1970s-1980s aesthetic, expired film look, desaturated highlights, authentic analog imperfection",
-    negative: "avoid: digital sharpness, clean modern look, vivid colors, no grain, contemporary style",
+    prompt: "Kodak Portra 400 film photography aesthetic, warm faded analog tones with lifted blacks, heavy film grain noise especially in shadows, slight color shift toward orange in midtones, cyan in shadows, light leaks in corners, vignette darkening edges, slightly soft focus from vintage lens, 1970s-1980s aesthetic, expired film look, desaturated highlights, authentic analog imperfection, faint dust specks and fine scratches on the film surface, warm halation glow bleeding around bright highlights, slightly underexposed shadow crush, candid unposed family-photo-album framing with a hint of motion blur",
+    negative: "avoid: digital sharpness, clean modern look, vivid colors, no grain, contemporary style, perfectly posed composition, crisp digital clarity",
   },
   {
     id: "hyperrealistic", label: "하이퍼리얼", emoji: "🔬", desc: "초극사실적 묘사",
-    prompt: "hyperrealistic commercial photography, 100MP medium format camera quality, studio strobe lighting with large octabox softbox, every surface texture rendered in microscopic detail, razor-sharp focus edge to edge, accurate color reproduction, product photography standard, subtle natural reflections, no visible grain, technically perfect exposure, advertising campaign quality, shot on Hasselblad H6D",
-    negative: "avoid: painterly, illustration, artistic interpretation, grain, blur, artistic style",
+    prompt: "hyperrealistic commercial photography, 100MP medium format camera quality, studio strobe lighting with large octabox softbox, every surface texture rendered in microscopic detail, razor-sharp focus edge to edge, accurate color reproduction, product photography standard, subtle natural reflections, no visible grain, technically perfect exposure, advertising campaign quality, shot on Hasselblad H6D, pore-level skin detail and individual fabric weave threads visible, fine condensation droplets or dust particles rendered with pin-sharp clarity, focus-stacked macro-level edge-to-edge sharpness, color-calibrated true-to-life tones as seen on a reference monitor",
+    negative: "avoid: painterly, illustration, artistic interpretation, grain, blur, artistic style, soft focus, plastic-looking skin, texture smoothing",
   },
   {
     id: "illustration", label: "일러스트", emoji: "✏", desc: "현대적 일러스트",
-    prompt: "contemporary editorial illustration style, bold confident vector-like line art, limited flat color palette with intentional color blocking, geometric simplified forms, layered composition with clear foreground-midground-background, texture overlays on flat fills, influenced by Malika Favre and Olimpia Zagnoli, strong graphic design sensibility, crisp clean shapes, modern magazine cover aesthetic",
-    negative: "avoid: photorealistic, anime, watercolor, rough texture, hand-drawn imprecision",
+    prompt: "contemporary editorial illustration style, bold confident vector-like line art, limited flat color palette with intentional color blocking, geometric simplified forms, layered composition with clear foreground-midground-background, texture overlays on flat fills, influenced by Malika Favre and Olimpia Zagnoli, strong graphic design sensibility, crisp clean shapes, modern magazine cover aesthetic, subtle riso-print grain texture with faint offset-print misregistration on edges, restrained 3-4 color palette with a single bold accent color, generous negative space, typography-friendly balanced composition, slight isometric depth cue within an otherwise flat 2D plane",
+    negative: "avoid: photorealistic, anime, watercolor, rough texture, hand-drawn imprecision, gradient shading, busy cluttered layout",
   },
   {
     id: "dark_luxury", label: "다크 럭셔리", emoji: "🖤", desc: "고급스러운 어둠",
-    prompt: "dark luxury editorial photography, near-black background with 5% lift, single narrow rim light creating product silhouette, 24-karat gold and deep black color story, velvet and polished metal surface textures, extreme shallow depth with specular highlights glinting, jewelry editorial lighting standard, perfume bottle advertisement aesthetic, dramatic shadows with 10:1 lighting ratio, smoke or mist for atmosphere",
-    negative: "avoid: bright environment, casual feel, flat lighting, colorful, playful, lo-fi",
+    prompt: "dark luxury editorial photography, near-black background with 5% lift, single narrow rim light creating product silhouette, 24-karat gold and deep black color story, velvet and polished metal surface textures, extreme shallow depth with specular highlights glinting, jewelry editorial lighting standard, perfume bottle advertisement aesthetic, dramatic shadows with 10:1 lighting ratio, smoke or mist for atmosphere, brushed titanium and obsidian black lacquer material accents, single hard-edged spotlight carving out the subject from darkness, subtle lens vignette framing, film-noir cinematic composition, luxury car showroom lighting reference",
+    negative: "avoid: bright environment, casual feel, flat lighting, colorful, playful, lo-fi, even soft lighting, cluttered background",
   },
   {
     id: "nature", label: "자연·유기적", emoji: "🌿", desc: "자연친화적 감성",
-    prompt: "organic nature photography, golden hour soft sunlight filtering through leaves, dappled light and shadow patterns, earthy color palette of sage green, terracotta, warm beige, botanical elements naturally integrated, macro texture of leaves bark stone, gentle lens blur of out-of-focus foliage, environmentally conscious aesthetic, slow-living visual language, imperfect natural beauty",
-    negative: "avoid: artificial lighting, urban setting, synthetic materials, harsh flash, neon colors",
+    prompt: "organic nature photography, golden hour soft sunlight filtering through leaves, dappled light and shadow patterns, earthy color palette of sage green, terracotta, warm beige, botanical elements naturally integrated, macro texture of leaves bark stone, gentle lens blur of out-of-focus foliage, environmentally conscious aesthetic, slow-living visual language, imperfect natural beauty, fine morning dew droplets or mist rising softly off grass and foliage, handheld film-like softness with gentle natural camera sway, Kinfolk-magazine editorial styling, natural material props like linen fabric raw wood and hand-thrown ceramic",
+    negative: "avoid: artificial lighting, urban setting, synthetic materials, harsh flash, neon colors, plastic props, studio backdrop",
   },
   {
     id: "pop_art", label: "팝아트", emoji: "🎭", desc: "팝아트 스타일",
-    prompt: "Roy Lichtenstein and Andy Warhol inspired pop art, benday halftone dot pattern overlaid on bold flat colors, thick black outlines with 4-6pt stroke weight, primary color palette red yellow blue with added hot pink, repeated motif screen-print aesthetic, thought bubbles or speech bubble graphic elements, high contrast with no gradients, comic book printing artifact aesthetic, Pantone solid colors only",
-    negative: "avoid: photorealistic, subtle colors, gradients, painterly, no outlines, 3D render",
+    prompt: "Roy Lichtenstein and Andy Warhol inspired pop art, benday halftone dot pattern overlaid on bold flat colors, thick black outlines with 4-6pt stroke weight, primary color palette red yellow blue with added hot pink, repeated motif screen-print aesthetic, thought bubbles or speech bubble graphic elements, high contrast with no gradients, comic book printing artifact aesthetic, Pantone solid colors only, visible CMYK color-separation misregistration for authentic print artifact feel, bold flat color-block background panels, comic-panel border framing with dynamic speed lines, varying Ben-Day dot size and density to suggest depth and shading",
+    negative: "avoid: photorealistic, subtle colors, gradients, painterly, no outlines, 3D render, muted tones, soft edges",
   },
   {
     id: "dreamy", label: "몽환적", emoji: "☁", desc: "몽환적 분위기",
-    prompt: "ethereal dreamscape photography, extreme lens bloom and halation glow around highlights, soft double exposure layering, pastel color palette lavender pink peach mist, heavy diffusion filter effect, out-of-focus foreground bokeh bubbles, surreal floating elements, haze and atmospheric fog reducing contrast, fairy tale otherworldly mood, slow shutter motion blur, iridescent light rainbow lens flare",
-    negative: "avoid: sharp focus, high contrast, realistic, dark tones, urban, harsh lighting",
+    prompt: "ethereal dreamscape photography, extreme lens bloom and halation glow around highlights, soft double exposure layering, pastel color palette lavender pink peach mist, heavy diffusion filter effect, out-of-focus foreground bokeh bubbles, surreal floating elements, haze and atmospheric fog reducing contrast, fairy tale otherworldly mood, slow shutter motion blur, iridescent light rainbow lens flare, prism light-leak flares with soft chromatic fringing at edges, gauzy translucent fabric diffusion overlay across the frame, weightless slow-motion floating hair and fabric, soft pastel gradient sky, drifting glitter-like light-particle bokeh",
+    negative: "avoid: sharp focus, high contrast, realistic, dark tones, urban, harsh lighting, static rigid poses, saturated primary colors",
   },
   {
     id: "joseon", label: "조선 민화", emoji: "🏮", desc: "한국 전통 민화·조선 스타일",
@@ -207,7 +207,7 @@ const PLATFORM_CONFIGS = {
     size:"1080×1920px", fps:"24-60fps", maxSize:"256MB",
     tone:"에너지 넘치고 빠른 전개, 첫 3초 안에 훅, 자막 필수",
     style:"역동적·빠른 컷, 강렬한 오프닝, 유튜브 알고리즘 SEO 최적화",
-    policy:"광고주 친화 콘텐츠 필수, 성인 콘텐츠·폭력·혐오 금지, 저작권 준수",
+    policy:"광고주 친화 콘텐츠 필수, 성인 콘텐츠·폭력·혐오 금지, 저작권 준수, 제휴/협찬 링크가 있으면 업로드 시 YouTube 스튜디오의 '유료 프로모션 포함' 토글을 반드시 켤 것(설명란 문구만으론 법적 고지 요건 불충분)",
     caption_tip:"해시태그 3-5개 권장, 자막은 화면 중앙 하단 배치",
   },
   tiktok:          {
@@ -224,7 +224,7 @@ const PLATFORM_CONFIGS = {
     tone:"감성적·라이프스타일, 브랜드 무드 강조, 세련된 어투",
     style:"고화질·감성 필터, 라이프스타일 연출, 일상 속 제품 자연스럽게",
     policy:"Instagram 커뮤니티 가이드라인, 과도한 노출·폭력 금지",
-    caption_tip:"해시태그 20-30개, 위치 태그 추가, 제품 태그 활용",
+    caption_tip:"2026년 1월부터 해시태그 최대 5개로 플랫폼 자체 제한(초과 시 게시물에서 해시태그 기능 자체가 막힘) — 가장 관련성 높은 3-5개만 엄선. 캡션은 최대 2,200자지만 모바일에서 앞 55-60자만 보이고 '더 보기'로 잘리므로 핵심 후킹 문구를 맨 앞에 배치. 위치 태그 추가, 제품 태그 활용",
   },
   facebook_reels:  {
     label:"Facebook Reels", icon:"f", color:"#1877F2", ratio:"9:16", duration:"15-90초",
@@ -248,7 +248,7 @@ const PLATFORM_CONFIGS = {
     tone:"캐주얼·진솔한 말투, 커뮤니티 대화 유도, 친근하게",
     style:"캐주얼·진정성, 대화형, 일상 공유, 꾸미지 않은 자연스러움",
     policy:"Instagram 정책 동일 적용, 혐오·스팸 금지",
-    caption_tip:"해시태그 최소화, 질문형 문구로 댓글 유도",
+    caption_tip:"Threads는 해시태그 기능 자체가 없음(해시태그 절대 넣지 말 것, 대신 문장 안에 자연스럽게 키워드 녹일 것) — 게시물 최대 500자(추가 텍스트 첨부 시 최대 10,000자까지 가능하지만 짧고 대화하듯 쓰는 게 반응이 더 좋음), 질문형 문구로 댓글 유도",
   },
   pinterest:       {
     label:"Pinterest", icon:"P", color:"#E60023", ratio:"9:16", duration:"15-60초",
@@ -313,7 +313,7 @@ const PLATFORM_CONFIGS = {
     size:"1920×1080px (4K 3840×2160 권장)", fps:"24-60fps", maxSize:"256GB",
     tone:"구독자와 대화하는 친근한 말투, 전문성 + 친근함 병행, 시청 유지율 중시",
     style:"상세 리뷰·스토리텔링, 교육·정보, 썸네일·인트로 중요, 챕터 구분",
-    policy:"YouTube 수익창출 정책 준수, 광고주 친화 필수",
+    policy:"YouTube 수익창출 정책 준수, 광고주 친화 필수, 제휴/협찬 링크가 있으면 업로드 시 YouTube 스튜디오의 '유료 프로모션 포함' 토글을 반드시 켤 것(설명란 문구만으론 법적 고지 요건 불충분)",
     caption_tip:"설명란에 타임스탬프·링크, 해시태그 3개, 자막 파일 업로드",
   },
   naver_tv:        {
@@ -359,9 +359,67 @@ const PLATFORM_CONFIGS = {
   },
 };
 
+const CATEGORY_LIST = ["패션의류", "패션잡화", "화장품/미용", "디지털/가전", "가구/인테리어", "출산/육아", "식품", "스포츠/레저", "생활/건강", "여가/생활편의"];
+const STORY_GENRE_GROUPS = [
+  { group: "🏗 건축·공학", items: ["랜드마크 비하인드(에펠탑 등)", "다리·터널 구조 원리", "방공호·요새·군사시설", "도시계획·인프라", "실패한 건축·붕괴 사고"] },
+  { group: "🔀 융합·교차지식", items: ["건축 속 수학", "건축 속 미술", "건축 속 과학", "미술 속 미스터리(숨은 코드·위작·도난)", "명언 속 예언(소름 돋게 들어맞은 말들)", "음식 속 화학", "언어 속 역사", "음악 속 수학", "자연 속 물리학(동물의 공학)", "일상 속 경제학", "스포츠 속 물리학(마그누스 효과·역학)", "영화 속 과학 고증", "신화 속 과학적 근거", "색깔의 역사(금보다 비쌌던 안료)", "지도 속 정치(투영법에 숨은 권력)", "게임 속 경제학(확률·화폐 설계)", "광고 속 심리학", "전래동화 속 숨은 역사"] },
+  { group: "🔬 과학·기술", items: ["우주·천문", "물리·화학 원리", "생물·자연현상", "신기술·미래과학", "발명·발견 비하인드"] },
+  { group: "🧠 심리학", items: ["심리 실험 이야기", "인간관계·행동심리", "성격유형·자기이해", "이상심리·정신질환 실화"] },
+  { group: "🎓 인문학", items: ["철학·사상사", "종교·신화", "언어·어원 이야기", "사회학·인류학", "사자성어·고사성어", "명언·격언"] },
+  { group: "🔮 명리학·사주·타로", items: ["사주풀이·운세 이야기", "타로카드 해석", "관상·손금", "띠·별자리 운세", "풍수지리"] },
+  { group: "📚 문학", items: ["순수문학·감성에세이", "고전 재해석", "시·서정 스토리텔링"] },
+  { group: "🎨 예술", items: ["미술·화가 이야기", "음악·공연 비하인드", "영화·연극 비하인드"] },
+  { group: "📜 역사", items: ["조선야담·민담", "근현대사 비화", "세계사 미스터리", "역사인물 재조명"] },
+  { group: "🌍 지리·문화", items: ["세계 이색문화", "여행지 비하인드", "음식문화의 유래"] },
+  { group: "💰 경제·재테크", items: ["실화 창업·사업 스토리", "재테크 지식", "경제사·경제위기"] },
+  { group: "💕 로맨스", items: ["운명적 만남", "짝사랑·첫사랑", "국제 로맨스", "이별·재회", "황혼 로맨스"] },
+  { group: "🔍 미스터리·스릴러", items: ["추리 수사극", "음모론", "미제사건 실화", "심리 스릴러"] },
+  { group: "🪄 판타지·SF", items: ["이세계·환생", "초능력", "미래 디스토피아"] },
+  { group: "😂 코미디", items: ["일상 개그", "패러디·풍자", "밈·유행어 콘텐츠"] },
+  { group: "💥 액션", items: ["사이다 복수극", "히어로·액션", "무협·사극액션"] },
+  { group: "📹 다큐·실화", items: ["실화 바탕 사건사고", "인터뷰·증언", "서프라이즈 실화"] },
+  { group: "🌱 인생·자기계발", items: ["인생명언·조언", "시니어 도전기", "자기계발·동기부여"] },
+  { group: "👻 공포·오컬트", items: ["귀신·괴담", "도시전설", "심령현상 실화"] },
+  { group: "👨‍👩‍👧 가족·휴먼드라마", items: ["막장 사연(고부갈등 등)", "가슴 따뜻한 가족애", "국뽕 드라마"] },
+];
+const STORY_GENRE_LIST = STORY_GENRE_GROUPS.flatMap(g => g.items);
+
+const IDIOM_SUGGESTIONS = [
+  { idiom: "새옹지마(塞翁之馬)", meaning: "인생의 화와 복은 예측할 수 없다" },
+  { idiom: "고진감래(苦盡甘來)", meaning: "고생 끝에 낙이 온다" },
+  { idiom: "전화위복(轉禍爲福)", meaning: "화가 오히려 복이 되다" },
+  { idiom: "우공이산(愚公移山)", meaning: "꾸준히 하면 큰일도 이룬다" },
+  { idiom: "대기만성(大器晩成)", meaning: "큰 인물은 늦게 이루어진다" },
+  { idiom: "마부작침(磨斧作針)", meaning: "노력하면 안 되는 일이 없다" },
+  { idiom: "형설지공(螢雪之功)", meaning: "고생하며 이룬 성공" },
+  { idiom: "사필귀정(事必歸正)", meaning: "모든 일은 결국 바르게 돌아간다" },
+  { idiom: "인과응보(因果應報)", meaning: "원인에 따라 결과가 따른다" },
+  { idiom: "진인사대천명(盡人事待天命)", meaning: "최선을 다한 후 하늘의 뜻을 기다린다" },
+  { idiom: "일신우일신(日新又日新)", meaning: "나날이 새롭게 발전한다" },
+  { idiom: "권토중래(捲土重來)", meaning: "실패 후 다시 일어나 재도전한다" },
+  { idiom: "타산지석(他山之石)", meaning: "남의 하찮은 언행도 나의 수양에 도움이 된다" },
+  { idiom: "역지사지(易地思之)", meaning: "상대방의 입장에서 생각해본다" },
+  { idiom: "온고지신(溫故知新)", meaning: "옛것을 익혀 새것을 안다" },
+  { idiom: "청출어람(靑出於藍)", meaning: "제자가 스승보다 뛰어나다" },
+];
+
 const STORAGE_KEY = "pvps_sb_v2";
 function loadStorage() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } }
 function saveStorage(d) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {} }
+
+// ── 생성 기록 (중복 방지용, 메타데이터만 저장) ──────────────────────────────
+const HISTORY_KEY = "pvps_gen_history";
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch { return []; } }
+function saveHistoryList(list) { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 200))); } catch {} }
+
+// ── 스토리 숏폼 시리즈 저장소 (장르별로 계속 이어서 만들기용, 메타데이터만) ──
+const STORY_SERIES_KEY = "pvps_story_series";
+function loadStorySeries() { try { return JSON.parse(localStorage.getItem(STORY_SERIES_KEY)) || []; } catch { return []; } }
+function saveStorySeriesList(list) { try { localStorage.setItem(STORY_SERIES_KEY, JSON.stringify(list.slice(0, 500))); } catch {} }
+
+const USED_IDIOMS_KEY = "pvps_used_idioms";
+function loadUsedIdioms() { try { return JSON.parse(localStorage.getItem(USED_IDIOMS_KEY)) || []; } catch { return []; } }
+function saveUsedIdiomsList(list) { try { localStorage.setItem(USED_IDIOMS_KEY, JSON.stringify(list.slice(0, 500))); } catch {} }
 
 function parseJSON(text) {
   const clean = text.replace(/```json|```/g, "").trim();
@@ -547,11 +605,11 @@ function SceneCard({ scene, sceneData, frameworkColor, styleId, onCopy, copiedKe
             </div>
           )}
 
-          {/* AI Prompt */}
+          {/* Image Prompt */}
           <div>
-            <div style={{ fontSize: 10, color: frameworkColor, fontWeight: 700, marginBottom: 5 }}>🤖 AI 영상 프롬프트</div>
+            <div style={{ fontSize: 10, color: frameworkColor, fontWeight: 700, marginBottom: 5 }}>🖼 이미지 프롬프트</div>
             <div style={{ background: "#060612", border: `1px solid ${frameworkColor}20`, borderRadius: 9, padding: 11, position: "relative" }}>
-              <div style={{ position: "absolute", top: 6, right: 7, fontSize: 9, color: frameworkColor, background: `${frameworkColor}20`, borderRadius: 4, padding: "1px 6px" }}>PROMPT</div>
+              <div style={{ position: "absolute", top: 6, right: 7, fontSize: 9, color: frameworkColor, background: `${frameworkColor}20`, borderRadius: 4, padding: "1px 6px" }}>IMAGE</div>
               <p style={{ fontSize: 11, color: "#7090d0", lineHeight: 1.8, margin: 0, fontFamily: "monospace", wordBreak: "break-word", paddingRight: 55 }}>{sceneData.ai_prompt}</p>
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
@@ -567,6 +625,24 @@ function SceneCard({ scene, sceneData, frameworkColor, styleId, onCopy, copiedKe
               )}
             </div>
           </div>
+
+          {/* Video Prompts — 3 platforms */}
+          {[
+            { key: "video_prompt_hailuo", label: "🌊 MiniMax Hailuo 2.3 Fast (768p)", color: "#06b6d4" },
+            { key: "video_prompt_kling", label: "🎥 Kling 2.5 (720p)", color: "#f59e0b" },
+            { key: "video_prompt_veo", label: "🔊 Google Veo 3 (최대 4K, 오디오 포함)", color: "#8b5cf6" },
+          ].map(v => sceneData[v.key] && (
+            <div key={v.key}>
+              <div style={{ fontSize: 10, color: v.color, fontWeight: 700, marginBottom: 5 }}>{v.label}</div>
+              <div style={{ background: "#060612", border: `1px solid ${v.color}20`, borderRadius: 9, padding: 11 }}>
+                <p style={{ fontSize: 11, color: "#c0a8e0", lineHeight: 1.8, margin: 0, fontFamily: "monospace", wordBreak: "break-word" }}>{sceneData[v.key]}</p>
+              </div>
+              <button onClick={() => onCopy(sceneData[v.key], `${v.key}-${scene.id}`)}
+                style={{ background: "#1e1e2e", border: "1px solid #2a2a3e", borderRadius: 6, padding: "4px 10px", color: copiedKey === `${v.key}-${scene.id}` ? "#03C75A" : "#9090b0", fontSize: 11, cursor: "pointer", marginTop: 7 }}>
+                {copiedKey === `${v.key}-${scene.id}` ? "✓ 복사됨" : "프롬프트 복사"}
+              </button>
+            </div>
+          ))}
 
           {/* Negative */}
           {sceneData.negative_prompt && (
@@ -832,6 +908,70 @@ export default function App() {
   const [discoverResults, setDiscoverResults] = useState([]);
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [discoverStep, setDiscoverStep] = useState("");
+  const [naverTrend, setNaverTrend] = useState(null); // [{period, ratio}] — 검색어트렌드 보조 인사이트
+  const [shortsTrend, setShortsTrend] = useState(null); // [{title,url,content,image}] — 유튜브/틱톡 벤치마크
+  const [shortsTrendLoading, setShortsTrendLoading] = useState(false);
+  const [trendTopics, setTrendTopics] = useState(null); // AI가 벤치마크 보고 추천한 제목/소재
+  const [trendTopicsLoading, setTrendTopicsLoading] = useState(false);
+
+  // 유튜브 쇼츠·틱톡 — 지금 뜨는 숏폼 벤치마크 (공식 API 없이 Tavily 웹검색으로 참고용 링크 수집) → AI가 보고 소재 추천까지
+  const fetchShortsTrend = async () => {
+    if (!tavilyKey) { setError("Tavily API 키가 필요합니다. 설정에서 입력해주세요."); return; }
+    const kw = seriesMode ? storyGenre : (discoverCategory.trim() || "숏폼");
+    const query = seriesMode ? `${kw} 장르 숏폼 드라마 요즘 인기 시리즈 유튜브 쇼츠 틱톡` : `${kw} 유튜브 쇼츠 틱톡 요즘 인기 트렌드 바이럴`;
+    setShortsTrendLoading(true);
+    setTrendTopics(null);
+    let results = [];
+    try {
+      const res = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tavilyKey}` },
+        body: JSON.stringify({
+          query,
+          max_results: 8,
+          search_depth: "advanced",
+          include_images: true,
+        }),
+      });
+      if (!res.ok) throw new Error(`Tavily 검색 오류 ${res.status}`);
+      const data = await res.json();
+      results = (data.results || []).map(r => {
+        const first = (r.images || [])[0];
+        return { title: r.title, url: r.url, content: (r.content || "").slice(0, 140), image: first ? (typeof first === "string" ? first : first.url) : "" };
+      });
+      setShortsTrend(results);
+    } catch (e) {
+      setError(e.message);
+      setShortsTrendLoading(false);
+      return;
+    }
+    setShortsTrendLoading(false);
+
+    // 벤치마크 결과를 AI가 보고 실제 쓸 수 있는 제목/소재로 추천
+    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    if (!apiKey || !results.length) return;
+    setTrendTopicsLoading(true);
+    try {
+      const listText = results.map((r, i) => `${i + 1}. ${r.title} — ${r.content}`).join("\n");
+      const raw = await callAI(
+        `아래는 "${kw}" 관련 지금 뜨는 유튜브 쇼츠·틱톡 벤치마크 검색 결과다. 이 트렌드를 참고해서(그대로 베끼지 말고) ${seriesMode ? `장르 [${storyGenre}]` : "이 소재"}에 맞는 새로운 제목/소재 3개를 추천해줘. JSON 배열로만 응답. 마크다운 없이.
+
+벤치마크 결과:
+${listText}
+
+[{"title":"추천 제목/소재 한 줄","reason":"이 트렌드의 어떤 점을 반영했는지 한 문장"}, ...] 3개`,
+        []
+      );
+      const parsed = parseJSON(`{"list":${raw.replace(/```json|```/g, "").trim()}}`);
+      const list = Array.isArray(parsed.list) ? parsed.list : [];
+      setTrendTopics(list);
+    } catch {
+      // 추천 실패해도 벤치마크 링크는 이미 보여줬으니 조용히 무시
+    } finally {
+      setTrendTopicsLoading(false);
+    }
+  };
+
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [testResults, setTestResults] = useState({});
   const [testLoading, setTestLoading] = useState(false);
@@ -839,6 +979,89 @@ export default function App() {
   // Input
   const [productUrl, setProductUrl] = useState("");
   const [productDesc, setProductDesc] = useState("");
+  const [genHistory, setGenHistory] = useState(loadHistory);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const addHistoryEntry = (entry) => {
+    setGenHistory(prev => {
+      const next = [{ id: Date.now(), date: new Date().toISOString(), ...entry }, ...prev];
+      saveHistoryList(next);
+      return next;
+    });
+  };
+  const removeHistoryEntry = (id) => {
+    setGenHistory(prev => {
+      const next = prev.filter(h => h.id !== id);
+      saveHistoryList(next);
+      return next;
+    });
+  };
+  const findHistoryDuplicate = (source) => {
+    const s = (source || "").trim().toLowerCase();
+    if (!s) return null;
+    return genHistory.find(h => h.source && (h.source.toLowerCase() === s || h.source.toLowerCase().includes(s) || s.includes(h.source.toLowerCase())));
+  };
+
+  // ── 스토리 숏폼: 장르별로 계속 이어서 만드는 시리즈 저장소 ──
+  const [storyGenre, setStoryGenre] = useState(STORY_GENRE_LIST[0]);
+  const [storyTopic, setStoryTopic] = useState("");
+  const [idiomPool, setIdiomPool] = useState(IDIOM_SUGGESTIONS);
+  const [usedIdioms, setUsedIdioms] = useState(loadUsedIdioms);
+  const [idiomLoading, setIdiomLoading] = useState(false);
+  const visibleIdioms = idiomPool.filter(it => !usedIdioms.includes(it.idiom));
+
+  const pickIdiom = (it) => {
+    setStoryTopic(`${it.idiom} — ${it.meaning}`);
+    setUsedIdioms(prev => {
+      const next = [...prev, it.idiom];
+      saveUsedIdiomsList(next);
+      return next;
+    });
+  };
+
+  const fetchMoreIdioms = async () => {
+    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    if (!apiKey) { setError("AI API 키를 설정해주세요."); return; }
+    setIdiomLoading(true);
+    try {
+      const raw = await callAI(
+        `한국인에게 익숙한 사자성어·고사성어 10개를 새로 추천해줘. 아래 목록과 절대 겹치지 않게: ${[...idiomPool.map(i => i.idiom), ...usedIdioms].join(", ")}
+
+중요: idiom 필드는 반드시 "한글 독음(한자)" 형식으로만 작성할 것 — 한자만 단독으로 쓰지 말 것. 예시: "새옹지마(塞翁之馬)", "고진감래(苦盡甘來)"
+
+JSON 배열로만 응답. 마크다운 없이.
+[{"idiom":"한글독음(漢字)","meaning":"뜻 한 줄, 한국어"}, ...] 형식으로 10개`,
+        []
+      );
+      const parsed = parseJSON(`{"list":${raw.replace(/```json|```/g, "").trim()}}`);
+      const list = Array.isArray(parsed.list) ? parsed.list : [];
+      if (list.length) setIdiomPool(list);
+      else setError("새 사자성어를 못 받아왔어요. 다시 시도해주세요.");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setIdiomLoading(false);
+    }
+  };
+  const [storySeries, setStorySeries] = useState(loadStorySeries);
+  const genreEpisodes = storySeries.filter(e => e.genre === storyGenre).sort((a, b) => a.epNumber - b.epNumber);
+  const nextEpNumber = genreEpisodes.length ? genreEpisodes[genreEpisodes.length - 1].epNumber + 1 : 1;
+  const [currentEpNumber, setCurrentEpNumber] = useState(null);
+  const addStoryEpisode = (entry) => {
+    setStorySeries(prev => {
+      const next = [{ id: Date.now(), date: new Date().toISOString(), ...entry }, ...prev];
+      saveStorySeriesList(next);
+      return next;
+    });
+  };
+  const removeStoryEpisode = (id) => {
+    setStorySeries(prev => {
+      const next = prev.filter(e => e.id !== id);
+      saveStorySeriesList(next);
+      return next;
+    });
+  };
+
   const MAX_IMAGES = 5;
   const [images, setImages] = useState([]); // [{ previewUrl, base64, mediaType }]
   const fileRef = useRef();
@@ -852,6 +1075,7 @@ export default function App() {
 
   // Output
   const [productInfo, setProductInfo] = useState(null);
+  const [videoMetadata, setVideoMetadata] = useState(null); // {title, description, hashtags} — 선택 플랫폼에 맞는 업로드 메타데이터
   const [storyboard, setStoryboard] = useState(null);
   const [selectedScenes, setSelectedScenes] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -860,6 +1084,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [copiedKey, setCopiedKey] = useState(null);
   const [regenScene, setRegenScene] = useState(null);
+  const [seriesMode, setSeriesMode] = useState(false);
 
   const fw = STORY_FRAMEWORKS[framework];
   const platCfg = PLATFORM_CONFIGS[platform];
@@ -913,19 +1138,88 @@ export default function App() {
     }
   }, [engine, geminiKey, claudeKey, claudeModel, kimiKey, kimiModel, orKey, orModel]);
 
+  // ── AI 자동 선택: 프레임워크 / 브랜드 톤 (스토리마다 다양하게) ──────────────
+  const [frameworkAutoLoading, setFrameworkAutoLoading] = useState(false);
+  const [brandToneAutoLoading, setBrandToneAutoLoading] = useState(false);
+
+  const autoPickFramework = async () => {
+    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    if (!apiKey) { setError("AI API 키를 설정해주세요."); return; }
+    const topic = seriesMode ? (storyTopic || storyGenre) : (productDesc || productUrl);
+    if (!topic) { setError("소재·주제 또는 상품 정보를 먼저 입력해주세요."); return; }
+    setFrameworkAutoLoading(true);
+    try {
+      const recentFrameworks = [...storySeries, ...genHistory].slice(0, 5).map(e => e.frameworkKey).filter(Boolean);
+      const options = Object.entries(STORY_FRAMEWORKS).map(([key, f]) => `${key}: ${f.label} (${f.desc}) - ${f.scenes.length}씬`).join("\n");
+      const raw = await callAI(
+        `아래 소재에 가장 잘 어울리는 스토리 프레임워크를 하나 골라줘. JSON으로만 응답. 마크다운 없이.
+소재: ${topic}
+${recentFrameworks.length ? `최근에 쓴 프레임워크(가능하면 겹치지 않게 다양하게 선택): ${recentFrameworks.join(", ")}` : ""}
+
+선택지:
+${options}
+
+{"framework":"위 key 중 하나","reason":"선택 이유 한 문장"}`,
+        []
+      );
+      const parsed = parseJSON(raw);
+      if (STORY_FRAMEWORKS[parsed.framework]) {
+        setFramework(parsed.framework);
+        setSelectedScenes(null);
+      } else {
+        setError("프레임워크 자동 선택에 실패했어요. 다시 시도해주세요.");
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setFrameworkAutoLoading(false);
+    }
+  };
+
+  const autoPickBrandTone = async () => {
+    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    if (!apiKey) { setError("AI API 키를 설정해주세요."); return; }
+    setBrandToneAutoLoading(true);
+    try {
+      const topic = seriesMode ? (storyTopic || storyGenre) : (productDesc || productUrl || "");
+      const recentTones = [...storySeries, ...genHistory].slice(0, 5).map(e => e.brandTone).filter(Boolean);
+      const raw = await callAI(
+        `아래 소재에 어울리는 브랜드 톤(말투·분위기)을 한국어 짧은 문구로 하나 새로 만들어줘. JSON으로만 응답. 마크다운 없이.
+소재: ${topic || "일반적인 숏폼 콘텐츠"}
+${recentTones.length ? `최근에 쓴 톤(겹치지 않게 다르게 만들 것): ${recentTones.join(" / ")}` : ""}
+{"brand_tone":"예시 형식(그대로 복사하지 말고 새로 만들 것): 고급스럽고 감성적인 / 친근하고 유머러스한 / 담담하고 신뢰감 있는 — 10~20자"}`,
+        []
+      );
+      const parsed = parseJSON(raw);
+      if (parsed.brand_tone) setBrandTone(parsed.brand_tone);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBrandToneAutoLoading(false);
+    }
+  };
+
   // ── Build scene prompt (카메라 자동, 정책 자동 삽입) ──────────────────────
-  const buildScenePrompt = useCallback((info, sceneId, sceneCfg, styleId) => {
+  const buildScenePrompt = useCallback((info, sceneId, sceneCfg, styleId, episodeInfo) => {
     const style = IMAGE_STYLES.find(s => s.id === styleId) || IMAGE_STYLES[0];
     const autoCamera = getAutoCamera(sceneId, styleId);
-    const styleNeg = style.negative || "avoid: low quality, blurry, watermark, misleading content";
+    // 사진이 아닌 회화·벡터·그래픽 스타일 — "카메라·렌즈" 같은 사진 용어를 넣으면 실사로 나와버리는 원인이 됨
+    // 수채화는 이제 반실사(카메라 심도·조명 느낌 포함) 스타일이라 사진 용어 금지 대상에서 제외
+    const isIllustrative = ["anime", "illustration", "pop_art", "joseon"].includes(styleId);
+    const styleNeg = (style.negative || "avoid: low quality, blurry, watermark, misleading content")
+      + (isIllustrative ? ", photograph, photography, photorealistic, realistic photo, DSLR, camera lens, depth of field, film grain, live-action" : "");
+    const seriesNote = episodeInfo
+      ? `\n스토리 숏폼 시리즈: 장르 [${episodeInfo.genre}], 이번 화는 ${episodeInfo.epNumber}화 (계속 이어지는 시리즈).${episodeInfo.isLastScene ? " 이 씬은 반드시 궁금증·긴장감을 남기고 끝나야 함(클리프행어) — narration과 visual 모두에 다음 화로 이어지는 여운/떡밥을 암시하는 내용을 포함할 것." : ""}${episodeInfo.prevSummary ? `\n이전 화까지의 줄거리(연속성 유지, 겹치는 전개 금지): ${episodeInfo.prevSummary}` : ""}
+유튜브 정책 추가 준수(절대 규칙, 예외 없음): 이 소재가 자극적이거나 민감한 내용(범죄·공포·비극·갈등·괴담·도난·사고·재난 등)을 다룰 경우, 단순 자극·선정성에 그치지 않고 반드시 교훈·성찰·경각심·따뜻한 메시지 중 하나를 이야기에 녹여낼 것. 실제 사건·인물·장소를 다룰 때는 사실을 왜곡하거나 조롱하지 말고 존중하는 태도를 유지할 것. 폭력·유혈·성적 묘사는 절대 금지이며, 위 [CONTENT POLICY] 규칙에 조금이라도 어긋날 소지가 있으면 자극적인 디테일을 빼고 안전한 방향으로 순화해서 표현할 것 — 정책 위반 가능성이 있다면 흥미보다 안전을 우선한다.\n`
+      : "";
 
     return `${POLICY_RULES}
-상품 정보:
+${episodeInfo ? "콘텐츠 정보" : "상품 정보"}:
 ${JSON.stringify(info, null, 2)}
 
 스토리 프레임워크: ${fw.label} (${fw.desc})
 현재 씬: [${sceneCfg.label}] ${sceneCfg.emoji} — ${sceneCfg.desc}
-플랫폼: ${platCfg.label}
+${seriesNote}플랫폼: ${platCfg.label}
 - 영상 규격: ${platCfg.ratio} / ${platCfg.size} / ${platCfg.fps} / 최대 ${platCfg.maxSize}
 - 권장 길이: ${platCfg.duration}
 - 말투·톤: ${platCfg.tone}
@@ -937,26 +1231,39 @@ ${JSON.stringify(info, null, 2)}
 스타일 프롬프트 (반드시 전부 반영): ${style.prompt}
 카메라 무브 (자동 결정됨): ${autoCamera}
 ${brandTone ? `브랜드 톤: ${brandTone}` : ""}
-${info.visual_details ? `\n실제 상품 사진에서 관찰된 특징 (반드시 ai_prompt에 구체적으로 반영, 참고 이미지가 첨부되어 있다면 그 실물 외형을 그대로 묘사할 것): ${info.visual_details}\n` : ""}
+${info.visual_details ? `\n실제 상품 사진에서 관찰된 특징 (반드시 모든 프롬프트에 구체적으로 반영, 참고 이미지가 첨부되어 있다면 그 실물 외형을 그대로 묘사할 것): ${info.visual_details}\n` : ""}
 
-위 콘텐츠 정책과 스타일·카메라를 완벽히 반영하여, 이 씬의 영상 프롬프트를 JSON으로만 응답. 마크다운 없이 순수 JSON.
+위 콘텐츠 정책과 스타일·카메라를 완벽히 반영하여, 이 씬의 프롬프트들을 JSON으로만 응답. 마크다운 없이 순수 JSON.
 프롬프트가 길어져도 괜찮으니 최대한 상세하고 정확하게 작성할 것 — 짧게 요약하지 말 것.
 
-IMPORTANT: The ai_prompt MUST:
-1. Include the exact camera movement: "${autoCamera}"
-2. COPY AND INTEGRATE ALL of these style elements exactly as specified: "${style.prompt}"
-3. Be 200+ words in English (longer and more detailed is always better — do not summarize or truncate)
-4. Describe, in specific detail: lighting setup (key/fill/rim, direction, color temperature), full color palette, surface textures and materials, precise camera framing and lens characteristics, environment/background detail, and exact product placement
-5. If real product photos were provided, ground every visual detail (color, shape, material, logo/packaging) in what those photos actually show — never invent a different-looking product
-6. Be 100% YouTube/advertiser-policy compliant
-7. The style should be unmistakably recognizable in the final video output
+이미지 프롬프트(ai_prompt)와 영상 생성 플랫폼 3곳(MiniMax Hailuo 2.3 Fast 768p / Kling 2.5 720p / Google Veo 3)용 프롬프트를 각각 따로 작성한다. 각 플랫폼은 강점이 달라서 같은 문장을 반복하지 말고 아래 특성에 맞게 최적화할 것:
+- ai_prompt (정지 이미지용): ${isIllustrative
+    ? `이 스타일(${style.label})은 사진이 아니라 회화·벡터·그래픽 아트다. 절대로 "camera", "lens", "depth of field", "photography", "photorealistic", "DSLR" 같은 사진 용어를 쓰지 말 것 — 대신 구도·레이아웃, 선의 굵기와 질감, 색면 배치, 명암 대비, 배경/환경 디테일, 정확한 상품/피사체 형태를 극도로 상세하게 묘사할 것. 프롬프트 맨 앞에 "${style.label} style illustration/artwork, NOT a photograph, NOT photorealistic"을 명시할 것.`
+    : `조명(key/fill/rim, 방향, 색온도), 전체 색감, 표면 질감·재질, 카메라 프레이밍·렌즈 특성, 배경/환경 디테일, 정확한 상품/피사체 배치를 극도로 상세하게.`} 200단어 이상 영문.
+- video_prompt_hailuo (MiniMax Hailuo 2.3 Fast용): 명확한 인과관계의 동작 체인(원인→시각적 결과)을 문장으로 순서대로 서술. 물·천·머리카락·파티클·충격·움직임의 관성 변화가 있다면 그 물리적 변화를 명시적으로 묘사. 과도하게 복잡한 동시다발적 동작은 피하고 하나의 명확한 동작 흐름에 집중. 150단어 내외 영문.
+- video_prompt_kling (Kling 2.5용): 정밀한 카메라 무브먼트 태그(예: dolly in, orbit left, crane up 등)와 구도·프레이밍을 명확히 지정. 장면 전체에서 피사체의 외형(색상·형태)이 일관되게 유지되도록 고정 디스크립터를 반복 명시. 시네마틱 톤·롱테이크 느낌 강조. 150단어 내외 영문.
+- video_prompt_veo (Google Veo 3용): Veo는 오디오를 함께 생성하므로, 시각 묘사에 더해 배경음·환경음·대사/나레이션 사운드를 함께 지시할 것(예: "sound of: ..."). 저작권 안전장치: 실제 존재하는 노래 제목·가사·아티스트명·브랜드 시그니처 징글을 절대 지목하지 말 것 — 배경음악이 필요하면 "upbeat acoustic guitar instrumental", "soft lo-fi piano" 처럼 장르·악기·분위기만 묘사할 것. 대사·나레이션이 들어갈 경우 반드시 실제 발화될 문장을 한국어 그대로 큰따옴표로 인용해서 넣을 것 (예: dialogue: "이건 안 될 것 같아" — 영어로 번역하거나 의역하지 말 것). 최고 수준의 실사 사실감(photorealism) 표현에 집중. 150단어 내외 영문(단, 인용된 대사 문장 자체는 한국어 그대로).
+
+IMPORTANT — 4개 프롬프트 전부 공통 규칙:
+1. Include the exact camera movement direction implied by: "${autoCamera}"
+2. COPY AND INTEGRATE these style elements — do NOT just gesture at the style with one adjective: "${style.prompt}"${isIllustrative ? ` — the ai_prompt text MUST actually contain several of these exact technique keywords verbatim (not paraphrased into generic terms), so the specific medium/technique is unmistakable and never slides into photorealism.` : ""}
+3. If real product photos were provided, ground every visual detail (color, shape, material, logo/packaging) in what those photos actually show — never invent a different-looking product
+4. Be 100% YouTube/advertiser-policy compliant, brand-safe — this is an absolute rule with NO exceptions, for ai_prompt/video_prompt_hailuo/video_prompt_kling/video_prompt_veo all equally. If any depicted action, imagery, or dialogue could even remotely risk violating the [CONTENT POLICY] above (violence, gore, weapons used aggressively, sexual/suggestive content, hate symbols, dangerous activities, disturbing/shocking imagery, real identifiable people, copyrighted characters/logos), do NOT include it — replace it with a safer equivalent that still serves the story. When in doubt, prioritize safety over dramatic impact.
+5. The style should be unmistakably recognizable in the final output
+6. 모든 이미지·영상(ai_prompt, video_prompt_hailuo, video_prompt_kling, video_prompt_veo 전부)의 배경·장소·간판·소품·인물은 명확히 "한국"으로 설정할 것 — 한글 간판/표지판, 한국식 거리·건물·인테리어, 한국인 등장인물을 명시적으로 묘사에 포함할 것 (소재상 명백히 해외/특정 국가가 배경이어야 하는 경우 제외). 화면에 텍스트/간판이 보이면 그 텍스트는 한글로 명시할 것. 등장인물의 대사·음성이 나오는 경우 전부 한국어로 할 것 — 영어 대사 금지.
+7. ai_prompt, video_prompt_hailuo, video_prompt_kling, video_prompt_veo 4개 전부 맨 끝에 이 플랫폼의 영상 규격을 반드시 명시할 것 — 정확히 이 형식으로 프롬프트 문장 끝에 추가: "Aspect ratio ${platCfg.ratio} (${platCfg.ratio === "9:16" ? "vertical/portrait" : platCfg.ratio === "16:9" ? "horizontal/landscape" : "square"}), resolution ${platCfg.size}." 플랫폼마다 세로(9:16)·가로(16:9) 등 비율이 다르므로 절대 임의로 다른 비율을 쓰지 말 것.
+8. 위 1~7번 규칙(정책·한국 배경·화면비 등)을 지키느라 내용을 뭉뚱그리거나 배경을 비워버리면 절대 안 됨. visual/narration/ai_prompt/video_prompt_hailuo/video_prompt_kling/video_prompt_veo 전부 이 씬 [${sceneCfg.label}]과 아래 콘텐츠/상품 정보에만 해당하는 매우 구체적이고 생생한 디테일로 채울 것 — 배경 장소(어디인지 정확히), 주변 소품·사물, 인물의 구체적 동작·표정, 시간대·날씨·분위기를 전부 명시. "사무실에서 컴퓨터 앞에 앉아 일한다", "책상에서 서류를 본다" 같은 막연하고 아무 데나 갖다 붙일 수 있는 뻔한 스톡사진식 장면은 절대 금지 — 이 소재가 아니면 나올 수 없는 고유한 장면이어야 한다. 배경이 텅 비어 보이거나 정보가 빈약한 것보다, 구체적인 디테일이 과할 정도로 많은 게 낫다.
+9. 스타일을 아무리 강하게 입혀도 상품/핵심 피사체 자체는 절대 사라지거나 추상적으로 뭉개지면 안 됨 — 상품의 실제 형태·비율·색상·로고·패키지가 매 프롬프트(ai_prompt 포함 4개 전부)에서 명확히 알아볼 수 있게 유지되도록 구체적으로 묘사할 것. 스타일(질감·색감·화풍)은 상품을 감싸는 표현 방식일 뿐, 상품 자체를 가리거나 왜곡해서는 안 된다.
 
 {
   "visual": "한국어 장면 묘사 4-6문장 (구체적 행동·감정·분위기·${style.label} 스타일 특징 명시, 실제 사진이 있다면 그 외형을 반영)",
   "narration": "나레이션/대사 10-20자 (임팩트)",
   "text_overlay": "화면 텍스트 5-15자",
   "duration": "추천 길이 예: 3-5초",
-  "ai_prompt": "${style.prompt}, camera: ${autoCamera}, [product and scene specific: describe the product placement, human subject if any, detailed lighting setup, full color palette, materials/textures, environment, atmosphere matching ${style.label} style — minimum 200 words total, highly detailed]",
+  "ai_prompt": "[정지 이미지 생성용, 200단어 이상 영문, 매우 상세하게]",
+  "video_prompt_hailuo": "[MiniMax Hailuo 2.3 Fast용 영문 프롬프트, 인과관계 동작 체인 중심]",
+  "video_prompt_kling": "[Kling 2.5용 영문 프롬프트, 카메라무브 태그 + 구도 일관성 중심]",
+  "video_prompt_veo": "[Google Veo 3용 영문 프롬프트, 오디오/사운드 지시 포함]",
   "negative_prompt": "${styleNeg}, violence, gore, sexual content, nudity, hate symbols, dangerous activities, misleading imagery, copyrighted characters, watermark, low quality"
 }`;
   }, [fw, platCfg, brandTone]);
@@ -965,45 +1272,78 @@ IMPORTANT: The ai_prompt MUST:
   const handleGenerate = async () => {
     const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
     if (!apiKey) { setError("API 키를 먼저 입력해주세요."); return; }
-    if (!productUrl && !productDesc && !images.length) { setError("상품 URL, 설명, 또는 이미지를 입력하세요."); return; }
+    if (!seriesMode && !productUrl && !productDesc && !images.length) { setError("상품 URL, 설명, 또는 이미지를 입력하세요."); return; }
 
     setError(""); setLoading(true); setLoadingPct(5);
-    setStoryboard(null); setProductInfo(null);
+    setStoryboard(null); setProductInfo(null); setVideoMetadata(null);
+
+    const prevSummary = seriesMode && genreEpisodes.length
+      ? genreEpisodes.slice(-3).map(e => `${e.epNumber}화: ${e.productName}${e.summary ? " - " + e.summary : ""}`).join(" / ")
+      : "";
+    // 장르·모드 구분 없이 지금까지 만든 모든 글과 겹치지 않도록 — 제목만 모아서 전달
+    const allPastTitles = [
+      ...storySeries.map(e => e.productName),
+      ...genHistory.map(h => h.productName),
+    ].filter(Boolean).slice(0, 60);
+    const noOverlapNote = allPastTitles.length
+      ? `\n지금까지 만든 모든 글 제목 목록(절대 겹치지 않게, 비슷한 소재·전개도 피할 것): ${allPastTitles.join(", ")}\n`
+      : "";
 
     try {
-      // 상품 분석
-      setLoadingStep("🔍 상품 분석 중...");
-      setLoadingPct(10);
-      let context = productDesc || "";
-      if (productUrl) {
-        if (tavilyKey) {
-          try {
-            const res = await fetch("https://api.tavily.com/extract", {
-              method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tavilyKey}` },
-              body: JSON.stringify({ urls: [productUrl], include_images: true }),
-            });
-            if (res.ok) { const d = await res.json(); context += "\n" + (d.results?.[0]?.raw_content || "").slice(0, 4000); }
-          } catch {}
-        } else { context += `\nURL: ${productUrl}`; }
-      }
+      let info;
+      if (seriesMode) {
+        // 주제 구상 — 상품이 아니라 장르 기반 스토리 소재 (상품 숏폼과 완전히 분리된 흐름)
+        setLoadingStep("📝 주제 구상 중...");
+        setLoadingPct(10);
+        const rawInfo = await callAI(
+          `장르 [${storyGenre}]에 맞는 스토리 숏폼 시리즈의 ${nextEpNumber}화 소재를 기획해서 JSON으로만 응답. 마크다운 없이.
+${storyTopic ? `사용자가 지정한 소재(최대한 반영): ${storyTopic}` : "소재는 이 장르에서 흥미롭고 훅이 강한 걸로 자유롭게 선정."}
+${storyTopic ? `\n만약 위 소재가 명언·격언·사자성어·고사성어라면: 그 문구/성어가 전하는 교훈을 보여주는 구체적인 인물·상황 스토리로 각색할 것. 그 문구 자체를 오프닝 내레이션이나 마지막 장면 내레이션으로 활용하고, 스토리 말미에 그 교훈이 명확히 드러나도록 마무리할 것.\n` : ""}
+${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스럽게 이어갈 것): ${prevSummary}` : ""}${noOverlapNote}
+{"name":"이번 화 제목/소재 한 줄","category":"${storyGenre}","price":"","usp":"핵심 후킹 포인트 1문장 (명언/사자성어라면 그 문구 자체 또는 핵심 교훈)","target":"타겟 시청자층","mood":"분위기","keywords":["k1","k2","k3"],"visual_details":""}`,
+          images
+        );
+        info = parseJSON(rawInfo);
+      } else {
+        // 상품 분석
+        setLoadingStep("🔍 상품 분석 중...");
+        setLoadingPct(10);
+        let context = productDesc || "";
+        if (productUrl) {
+          if (tavilyKey) {
+            try {
+              const res = await fetch("https://api.tavily.com/extract", {
+                method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tavilyKey}` },
+                body: JSON.stringify({ urls: [productUrl], include_images: true }),
+              });
+              if (res.ok) { const d = await res.json(); context += "\n" + (d.results?.[0]?.raw_content || "").slice(0, 4000); }
+            } catch {}
+          } else { context += `\nURL: ${productUrl}`; }
+        }
 
-      const rawInfo = await callAI(
-        `상품 정보 JSON으로만 응답. 마크다운 없이.\n${context}${images.length ? `\n[실제 상품 사진 ${images.length}장 첨부 — 색상·형태·재질·패키지 등 실물 특징을 정확히 반영]` : ""}\n{"name":"상품명","category":"카테고리","price":"가격","usp":"핵심가치 1문장","target":"타겟층","mood":"분위기","keywords":["k1","k2","k3"],"visual_details":"사진에서 관찰되는 색상·형태·재질·질감 등 실제 외형 특징 3-4문장 (사진이 없으면 빈 문자열)"}`,
-        images
-      );
-      const info = parseJSON(rawInfo);
+        const rawInfo = await callAI(
+          `상품 정보 JSON으로만 응답. 마크다운 없이.\n${context}${images.length ? `\n[실제 상품 사진 ${images.length}장 첨부 — 색상·형태·재질·패키지 등 실물 특징을 정확히 반영]` : ""}${noOverlapNote}\n{"name":"상품명","category":"카테고리","price":"가격","usp":"핵심가치 1문장(이전과 겹치지 않는 새로운 각도로)","target":"타겟층","mood":"분위기","keywords":["k1","k2","k3"],"visual_details":"사진에서 관찰되는 색상·형태·재질·질감 등 실제 외형 특징 3-4문장 (사진이 없으면 빈 문자열)"}`,
+          images
+        );
+        info = parseJSON(rawInfo);
+      }
       setProductInfo(info);
 
       // 씬별 생성 — 업로드한 실제 상품 사진을 씬 프롬프트 생성에도 함께 전달
       const scenes = fw.scenes;
+      const thisEpNumber = seriesMode ? nextEpNumber : null;
+      setCurrentEpNumber(thisEpNumber);
       const result = {};
       for (let i = 0; i < scenes.length; i++) {
         const sc = scenes[i];
         const styleId = sceneStyles[sc.id] || globalStyle;
-        setLoadingStep(`${sc.emoji} ${sc.label} 씬 생성 중... (${i + 1}/${scenes.length})`);
+        const episodeInfo = seriesMode
+          ? { genre: storyGenre, epNumber: thisEpNumber, isLastScene: i === scenes.length - 1, prevSummary }
+          : null;
+        setLoadingStep(`${seriesMode ? `[${storyGenre} ${thisEpNumber}화] ` : ""}${sc.emoji} ${sc.label} 씬 생성 중... (${i + 1}/${scenes.length})`);
         setLoadingPct(15 + Math.round((i / scenes.length) * 80));
         try {
-          const raw = await callAI(buildScenePrompt(info, sc.id, sc, styleId), images);
+          const raw = await callAI(buildScenePrompt(info, sc.id, sc, styleId, episodeInfo), images);
           result[sc.id] = parseJSON(raw);
         } catch (e) {
           result[sc.id] = { visual: "생성 실패: " + e.message, ai_prompt: "", narration: "", text_overlay: "", duration: "3-5초", negative_prompt: "" };
@@ -1012,7 +1352,61 @@ IMPORTANT: The ai_prompt MUST:
 
       setStoryboard(result);
       setSelectedScenes(scenes.map(s => s.id));
+
+      // 선택 플랫폼에 맞는 업로드 메타데이터(제목·설명·해시태그) 생성
+      setLoadingStep("🏷 태그·설명 생성 중...");
+      setLoadingPct(95);
+      try {
+        const allNarrations = scenes.map(sc => result[sc.id]?.narration).filter(Boolean).join(" / ");
+        const metaRaw = await callAI(
+          `아래 ${seriesMode ? "스토리" : "상품"} 정보와 씬별 나레이션을 참고해서, "${platCfg.label}" 플랫폼에 업로드할 제목·설명·해시태그를 만들어줘. JSON으로만 응답. 마크다운 없이.
+
+정보: ${JSON.stringify(info)}
+전체 나레이션 흐름: ${allNarrations}
+
+플랫폼 특성:
+- 말투·톤: ${platCfg.tone}
+- 콘텐츠 스타일: ${platCfg.style}
+- 정책: ${platCfg.policy}
+- 캡션 팁: ${platCfg.caption_tip}
+- 권장 길이: ${platCfg.duration}
+
+법적·저작권 안전장치 (절대 규칙):
+1. 제목·설명·해시태그 어디에도 타 브랜드의 등록상표·로고명·유명인 실명을 무단으로 언급하거나 마치 그들이 보증·협찬한 것처럼 암시하지 말 것. 저작권 있는 노래 제목·가사·캐릭터 이름을 그대로 인용하지 말 것.
+2. 효능·효과를 확정적으로 단정하는 과장 표현(완치, 100% 효과, 최고, 무조건, 즉시 효과 등 근거 없는 최상급·의학적 단정 표현) 금지 — 표시광고법·건강기능식품법상 과장광고 소지가 있는 문구는 "~에 도움을 줄 수 있어요" 같은 완곡한 표현으로 대체할 것.
+3. 타 브랜드명을 검색 유입 목적으로 자사 콘텐츠에 끼워 넣는 키워드 낚시(예: "OO 대신 이거") 금지.
+4. 해시태그 개수·형식은 위 "캡션 팁"에 명시된 플랫폼 자체 제한을 절대 넘기지 말 것 (예: Instagram은 최대 5개, Threads는 해시태그 기능 자체가 없으므로 hashtags를 빈 배열로 반환).${affiliateLink ? `
+5. 이 콘텐츠는 제휴/구매 링크가 포함된 광고성 콘텐츠다 — 공정거래위원회 "추천·보증 등에 관한 표시·광고 심사지침"에 따라 경제적 이해관계(제휴 수수료)가 있음을 명확히 밝혀야 한다. description 맨 앞이나 끝에 "*이 영상은 제휴 마케팅 활동의 일환으로, 파트너스 활동을 통해 일정액의 수수료를 제공받을 수 있습니다." 문구를 반드시 포함할 것. 해시태그를 지원하는 플랫폼이면 hashtags 배열에 "#광고"도 포함할 것 (단, 위 4번 규칙의 개수 제한 안에서).${(platform === "youtube_shorts" || platform === "youtube_long") ? ` YouTube는 title 맨 앞에 "[광고] " 접두어를 붙일 것, 그리고 description 끝에 "⚠ 업로드 시 YouTube 스튜디오 설정에서 '유료 프로모션 포함'을 반드시 켜주세요 — 설명란 문구만으로는 법적 고지 요건이 충족되지 않습니다." 문구를 추가로 넣을 것.` : ""}` : ""}
+
+{"title":"영상 제목 (플랫폼 톤에 맞게, 후킹 있게, 30자 내외)","description":"업로드 설명문 (플랫폼 캡션 팁 반영, 100-200자)","hashtags":["#태그1","#태그2","..."]}`,
+          []
+        );
+        setVideoMetadata(parseJSON(metaRaw));
+      } catch {
+        // 메타데이터 생성 실패해도 스토리보드 자체는 이미 완성됐으니 조용히 무시
+      }
       setLoadingPct(100);
+      addHistoryEntry({
+        source: productUrl || productDesc,
+        productName: info.name || "",
+        framework: fw.label,
+        frameworkKey: framework,
+        brandTone,
+        platform: platCfg.label,
+        seriesMode,
+      });
+      if (seriesMode) {
+        addStoryEpisode({
+          genre: storyGenre,
+          epNumber: thisEpNumber,
+          productName: info.name || "",
+          summary: info.usp || "",
+          framework: fw.label,
+          frameworkKey: framework,
+          brandTone,
+          platform: platCfg.label,
+        });
+      }
 
     } catch (e) { setError(e.message); }
     finally { setLoading(false); setLoadingStep(""); setTimeout(() => setLoadingPct(0), 800); }
@@ -1024,9 +1418,14 @@ IMPORTANT: The ai_prompt MUST:
     if (!productInfo || !apiKey) return;
     setRegenScene(sceneId);
     try {
-      const sc = fw.scenes.find(s => s.id === sceneId);
+      const scenes = fw.scenes;
+      const i = scenes.findIndex(s => s.id === sceneId);
+      const sc = scenes[i];
       const styleId = sceneStyles[sceneId] || globalStyle;
-      const raw = await callAI(buildScenePrompt(productInfo, sceneId, sc, styleId), images);
+      const episodeInfo = seriesMode
+        ? { genre: storyGenre, epNumber: currentEpNumber, isLastScene: i === scenes.length - 1, prevSummary: "" }
+        : null;
+      const raw = await callAI(buildScenePrompt(productInfo, sceneId, sc, styleId, episodeInfo), images);
       setStoryboard(prev => ({ ...prev, [sceneId]: parseJSON(raw) }));
     } catch (e) { setError("재생성 실패: " + e.message); }
     finally { setRegenScene(null); }
@@ -1037,6 +1436,9 @@ IMPORTANT: The ai_prompt MUST:
     if (!storyboard || !productInfo) return;
     let out = `# 스토리보드 — ${productInfo.name}\n프레임워크: ${fw.label} | 플랫폼: ${platCfg.label} | ${new Date().toLocaleString("ko-KR")}\n\n`;
     if (affiliateLink) out += `🔗 **구매 링크:** ${affiliateLink}\n\n`;
+    if (videoMetadata) {
+      out += `## 🏷 업로드 메타데이터 (${platCfg.label})\n**제목:** ${videoMetadata.title}\n\n**설명:**\n${videoMetadata.description}\n\n**해시태그:** ${(videoMetadata.hashtags || []).join(" ")}\n\n---\n\n`;
+    }
     fw.scenes.filter(s => activeScenes.includes(s.id)).forEach((sc, i) => {
       const d = storyboard[sc.id]; if (!d) return;
       const styleId = sceneStyles[sc.id] || globalStyle;
@@ -1047,7 +1449,10 @@ IMPORTANT: The ai_prompt MUST:
       out += `**장면 묘사:** ${d.visual}\n\n`;
       if (d.narration) out += `**나레이션:** "${d.narration}"\n\n`;
       if (d.text_overlay) out += `**화면 텍스트:** ${d.text_overlay}\n\n`;
-      out += `**AI 영상 프롬프트:**\n\`\`\`\n${d.ai_prompt}\n\`\`\`\n\n`;
+      out += `**이미지 프롬프트:**\n\`\`\`\n${d.ai_prompt}\n\`\`\`\n\n`;
+      if (d.video_prompt_hailuo) out += `**영상 프롬프트 — MiniMax Hailuo 2.3 Fast:**\n\`\`\`\n${d.video_prompt_hailuo}\n\`\`\`\n\n`;
+      if (d.video_prompt_kling) out += `**영상 프롬프트 — Kling 2.5:**\n\`\`\`\n${d.video_prompt_kling}\n\`\`\`\n\n`;
+      if (d.video_prompt_veo) out += `**영상 프롬프트 — Google Veo 3:**\n\`\`\`\n${d.video_prompt_veo}\n\`\`\`\n\n`;
       if (d.negative_prompt) out += `**네거티브:** ${d.negative_prompt}\n\n`;
       out += `---\n\n`;
     });
@@ -1056,20 +1461,94 @@ IMPORTANT: The ai_prompt MUST:
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `storyboard-${Date.now()}.md`; a.click();
   };
 
+  // script-voice-editor(대본·목소리·영상 편집기)가 다루는 대본/세그먼트/타이밍 구조에 맞춘 내보내기.
+  // 그 앱은 라벨/duration 문자열을 모르므로, "3-5초" 같은 범위 표기는 평균값(초 단위 숫자)으로 환산해
+  // 누적 start/end를 계산한다. 이미지·영상 프롬프트는 그 앱이 아직 안 쓰지만 참고용으로 세그먼트마다 같이 담는다.
+  const parseDurationSeconds = (str) => {
+    const nums = String(str || "").match(/[\d.]+/g)?.map(Number) || [];
+    if (!nums.length) return 4;
+    return nums.reduce((a, b) => a + b, 0) / nums.length;
+  };
+
+  const exportToEditor = () => {
+    if (!storyboard) return;
+    let cursor = 0;
+    const segments = fw.scenes.filter(s => activeScenes.includes(s.id)).map((sc, i) => {
+      const d = storyboard[sc.id]; if (!d) return null;
+      const dur = parseDurationSeconds(d.duration);
+      const seg = {
+        index: i,
+        sceneId: sc.id,
+        sceneLabel: sc.label,
+        text: d.narration || "",
+        textOverlay: d.text_overlay || "",
+        start: Number(cursor.toFixed(2)),
+        end: Number((cursor + dur).toFixed(2)),
+        duration: Number(dur.toFixed(2)),
+        visual: d.visual || "",
+        aiPrompt: d.ai_prompt || "",
+        videoPromptHailuo: d.video_prompt_hailuo || "",
+        videoPromptKling: d.video_prompt_kling || "",
+        videoPromptVeo: d.video_prompt_veo || "",
+        negativePrompt: d.negative_prompt || "",
+      };
+      cursor += dur;
+      return seg;
+    }).filter(Boolean);
+
+    const scriptText = segments.map(s => s.text).filter(Boolean).join("\n");
+
+    const payload = {
+      exportedFrom: "storyboard-studio",
+      exportedAt: new Date().toISOString(),
+      meta: {
+        framework: fw.label,
+        platform: platCfg.label,
+        title: productInfo?.name || "",
+        totalScenes: segments.length,
+        estimatedTotalDuration: Number(cursor.toFixed(2)),
+      },
+      script: scriptText,
+      segments,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `storyboard-editor-export-${Date.now()}.json`; a.click();
+  };
+
   const activeKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
-  const canGenerate = !loading && !!activeKey && (!!productUrl || !!productDesc || !!images.length);
+  const canGenerate = !loading && !!activeKey && (seriesMode || !!productUrl || !!productDesc || !!images.length);
 
   // ── 1단계: 상품 탐색 ─────────────────────────────────────────────────────
   const DISCOVER_PLATFORMS = [
     { id: "coupang",  label: "쿠팡",       color: "#FF5722", query: "site:coupang.com",       domain: "coupang.com" },
     { id: "naver",    label: "네이버쇼핑",  color: "#03C75A", query: "site:smartstore.naver.com", domain: "smartstore.naver.com" },
-    { id: "aliexpress",label: "알리",      color: "#FF6A00", query: "site:aliexpress.com",    domain: "aliexpress.com" },
-    { id: "11st",     label: "11번가",     color: "#E8380D", query: "site:11st.co.kr",        domain: "11st.co.kr" },
-    { id: "gmarket",  label: "G마켓",      color: "#B50029", query: "site:gmarket.co.kr",     domain: "gmarket.co.kr" },
+    { id: "kakao",    label: "카카오쇼핑",  color: "#FFCD00", query: "site:store.kakao.com",   domain: "store.kakao.com" },
+    { id: "toss",     label: "토스쇼핑",   color: "#0064FF", query: "site:toss.im 쇼핑",       domain: "toss.im" },
   ];
   const canDiscover = !!tavilyKey
-    || (discoverPlatform === "naver" && !!naverClientId && !!naverClientSecret)
     || (discoverPlatform === "coupang" && !!coupangAccessKey && !!coupangSecretKey);
+
+  // 네이버 API HUB 검색어트렌드 — 실패해도 메인 탐색 흐름을 막지 않는 보조 인사이트
+  const fetchNaverTrend = async (keyword) => {
+    if (!naverClientId || !naverClientSecret) return null;
+    try {
+      const res = await fetch("/api/naver-trend", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Ncp-Apigw-Api-Key-Id": naverClientId,
+          "X-Ncp-Apigw-Api-Key": naverClientSecret,
+        },
+        body: JSON.stringify({ keyword }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.series?.length ? data.series : null;
+    } catch {
+      return null;
+    }
+  };
 
   const handleDiscover = async () => {
     if (!discoverCategory.trim()) { setError("카테고리나 키워드를 입력해주세요."); return; }
@@ -1077,29 +1556,18 @@ IMPORTANT: The ai_prompt MUST:
     if (!apiKey) { setError("AI API 키를 설정해주세요."); return; }
 
     const plat = DISCOVER_PLATFORMS.find(p => p.id === discoverPlatform);
-    const useNaverApi = plat.id === "naver" && naverClientId && naverClientSecret;
     const useCoupangApi = plat.id === "coupang" && coupangAccessKey && coupangSecretKey;
-    if (!useNaverApi && !useCoupangApi && !tavilyKey) { setError("Tavily API 키가 필요합니다. 설정에서 입력해주세요."); return; }
+    if (!useCoupangApi && !tavilyKey) { setError("Tavily API 키가 필요합니다. 설정에서 입력해주세요."); return; }
 
-    setDiscoverLoading(true); setDiscoverResults([]); setError("");
+    setDiscoverLoading(true); setDiscoverResults([]); setNaverTrend(null); setError("");
+    fetchNaverTrend(discoverCategory).then(setNaverTrend);
 
     try {
-      // Step 1: 상품 검색 — 네이버/쿠팡은 키가 있으면 공식 API, 그 외엔 Tavily 웹검색
+      // Step 1: 상품 검색 — 쿠팡은 키가 있으면 공식 API, 그 외엔 Tavily 웹검색
+      // (네이버쇼핑 공식 검색 API는 2026-07-31 폐지되어 더 이상 존재하지 않음 — 네이버도 Tavily 경로로 검색)
       let items = []; // { title, url, image, content, priceText }
 
-      if (useNaverApi) {
-        setDiscoverStep(`🔍 네이버 쇼핑 공식 API로 검색 중...`);
-        const res = await fetch(`/api/naver-search?q=${encodeURIComponent(discoverCategory)}`, {
-          headers: { "X-Naver-Client-Id": naverClientId, "X-Naver-Client-Secret": naverClientSecret },
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `네이버 API 오류 ${res.status}`);
-        items = (data.items || []).map(it => ({
-          title: it.title, url: it.url, image: it.image,
-          content: `쇼핑몰: ${it.mallName || "-"} · 가격: ${it.lprice ? Number(it.lprice).toLocaleString() + "원" : "-"} · 브랜드: ${it.brand || "-"} · 카테고리: ${it.category || "-"}`,
-          priceText: it.lprice ? `${Number(it.lprice).toLocaleString()}원` : "",
-        }));
-      } else if (useCoupangApi) {
+      if (useCoupangApi) {
         setDiscoverStep(`🔍 쿠팡파트너스 공식 API로 검색 중...`);
         const res = await fetch(`/api/coupang-search?q=${encodeURIComponent(discoverCategory)}`, {
           headers: { "X-Coupang-Access-Key": coupangAccessKey, "X-Coupang-Secret-Key": coupangSecretKey },
@@ -1108,9 +1576,13 @@ IMPORTANT: The ai_prompt MUST:
         if (!res.ok) throw new Error(data.error || `쿠팡 API 오류 ${res.status}`);
         items = (data.items || []).map(it => ({
           title: it.title, url: it.url, image: it.image,
-          content: `가격: ${it.price ? Number(it.price).toLocaleString() + "원" : "-"} · 로켓배송: ${it.isRocket ? "예" : "아니오"} · 카테고리: ${it.category || "-"}`,
+          content: `가격: ${it.price ? Number(it.price).toLocaleString() + "원" : "-"} · 로켓배송: ${it.isRocket ? "예" : "아니오"} · 카테고리: ${it.category || "-"}${it.rank ? ` · 쿠팡 검색 인기순위: ${it.rank}위` : ""}`,
           priceText: it.price ? `${Number(it.price).toLocaleString()}원` : "",
         }));
+        // HTTP는 200이지만 쿠팡 응답 바디 안에서 실패를 알리는 경우 — rMessage를 그대로 보여줘야 원인 파악 가능
+        if (!items.length && data.rCode && data.rCode !== "0") {
+          throw new Error(`쿠팡 API 응답: ${data.rMessage || "알 수 없는 오류"} (rCode: ${data.rCode})`);
+        }
       } else {
         setDiscoverStep(`🔍 ${plat.label} 인기 상품 검색 중...`);
         const searchQuery = `${plat.query} ${discoverCategory} 베스트셀러 인기상품 리뷰많은`;
@@ -1119,7 +1591,7 @@ IMPORTANT: The ai_prompt MUST:
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${tavilyKey}` },
           body: JSON.stringify({
             query: searchQuery,
-            max_results: 10,
+            max_results: 15,
             ...(plat.domain ? { include_domains: [plat.domain] } : {}),
             search_depth: "advanced",
             include_images: true,
@@ -1137,6 +1609,13 @@ IMPORTANT: The ai_prompt MUST:
         });
       }
 
+      // 에러 페이지·품절/점검 안내 등 실제 상품이 아닌 결과는 분석 전에 걸러냄
+      const ERROR_PAGE_PATTERNS = ["에러페이지", "시스템오류", "시스템 오류", "페이지를 찾을 수 없", "찾을 수 없는 페이지", "404", "500 error", "page not found", "오류가 발생", "서비스 준비중", "점검중", "일시적인 오류", "요청하신 페이지"];
+      items = items.filter(it => {
+        const hay = `${it.title || ""} ${it.content || ""}`.toLowerCase();
+        return !ERROR_PAGE_PATTERNS.some(p => hay.includes(p.toLowerCase()));
+      });
+
       if (!items.length) throw new Error("검색 결과가 없습니다. 키워드를 바꿔보세요.");
 
       // Step 2: AI로 상품별 분석 + 수익성 평가
@@ -1151,6 +1630,7 @@ ${productList}
 
 분석 기준:
 - 판매량·리뷰 수 (많을수록 좋음)
+- "쿠팡 검색 인기순위"가 표기되어 있다면 그 숫자가 낮을수록(1위에 가까울수록) 실제로 잘 팔리고 있다는 강력한 근거이므로 trend_score·total_score에 적극 반영할 것. 단, 이 원본 순위 숫자는 검색할 때마다 바뀔 수 있어 화면에 표시되는 최종 추천 순위(1~${items.length}위, rank 필드)와 헷갈리게 되므로, reason 문장 안에 "쿠팡 검색 인기순위 N위" 같은 구체적 숫자를 직접 인용하지 말 것 — "쿠팡에서 검색 상위권 노출" 정도로만 정성적으로 표현하고, 사용자에게 보여줄 유일한 순위는 rank 필드뿐이다.
 - 검색 트렌드 (상승 중인 카테고리)
 - 수익률 예상 (마진 높은 상품)
 - 콘텐츠 제작 용이성 (영상 만들기 좋은 상품)
@@ -1189,7 +1669,8 @@ ${productList}
           const src = items[idx];
           return { ...p, name: src?.title || p.name || "", url: src?.url || "", image_url: src?.image || "", price_range: src?.priceText || p.price_range };
         })
-        .sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
+        .sort((a, b) => (b.total_score || 0) - (a.total_score || 0))
+        .slice(0, 5);
       setDiscoverResults(products);
 
     } catch (e) {
@@ -1281,8 +1762,8 @@ USP: ${product.usp}
                 { id: "kimi",    stateKey: "kimiKey",    label: "Kimi K3 (Moonshot)", link: "https://platform.moonshot.ai",                   val: kimiKey,    set: setKimiKey,    ph: "sk-...",       color: "#06b6d4", icon: "K",  req: false, info: "K3(2.8T·1M ctx) · $1 최소 충전 필요" },
                 { id: "or",      stateKey: "orKey",      label: "OpenRouter",         link: "https://openrouter.ai/keys",                     val: orKey,      set: setOrKey,      ph: "sk-or-v1-...", color: "#7c3aed", icon: "OR", req: false, info: "DeepSeek V4 Flash 무료 포함" },
                 { id: "tavily",  stateKey: "tavilyKey",  label: "Tavily (URL 크롤링)", link: "https://tavily.com",                             val: tavilyKey,  set: setTavilyKey,  ph: "tvly-...",     color: "#03C75A", icon: "T",  req: false, info: "무료 1,000/월 · 없어도 동작" },
-                { id: "naverId",     stateKey: "naverClientId",     label: "네이버 Client ID",     link: "https://developers.naver.com/apps/#/register", val: naverClientId,     set: setNaverClientId,     ph: "Client ID",     color: "#03C75A", icon: "N",  req: false, info: "쇼핑 검색 API · 상품탐색 1단계용 · 없어도 동작" },
-                { id: "naverSecret", stateKey: "naverClientSecret", label: "네이버 Client Secret", link: "https://developers.naver.com/apps/#/register", val: naverClientSecret, set: setNaverClientSecret, ph: "Client Secret", color: "#03C75A", icon: "N",  req: false, info: "네이버 Client ID와 한 쌍" },
+                { id: "naverId",     stateKey: "naverClientId",     label: "네이버 API HUB Key ID",     link: "https://www.ncloud.com/product/applicationService/naverApiHub", val: naverClientId,     set: setNaverClientId,     ph: "X-NCP-APIGW-API-KEY-ID",     color: "#03C75A", icon: "N",  req: false, info: "쇼핑검색 API는 폐지됨 · 검색어트렌드 보조 인사이트용 · 없어도 동작" },
+                { id: "naverSecret", stateKey: "naverClientSecret", label: "네이버 API HUB Secret", link: "https://www.ncloud.com/product/applicationService/naverApiHub", val: naverClientSecret, set: setNaverClientSecret, ph: "X-NCP-APIGW-API-KEY",     color: "#03C75A", icon: "N",  req: false, info: "네이버클라우드플랫폼(NCP) 콘솔에서 발급, Key ID와 한 쌍" },
                 { id: "coupangAccess", stateKey: "coupangAccessKey", label: "쿠팡파트너스 ACCESS KEY", link: "https://partners.coupang.com", val: coupangAccessKey, set: setCoupangAccessKey, ph: "ACCESS KEY", color: "#FF5722", icon: "C",  req: false, info: "상품검색 API · 시간당 10회 제한 · 없어도 동작" },
                 { id: "coupangSecret", stateKey: "coupangSecretKey", label: "쿠팡파트너스 SECRET KEY", link: "https://partners.coupang.com", val: coupangSecretKey, set: setCoupangSecretKey, ph: "SECRET KEY", color: "#FF5722", icon: "C",  req: false, info: "쿠팡 ACCESS KEY와 한 쌍" },
               ].map(f => (
@@ -1412,18 +1893,24 @@ USP: ${product.usp}
           <div style={{ fontSize: 10, color: "#5a5a7a" }}>카메라 자동 · YouTube 정책 자동 준수 · 씬별 스타일</div>
         </div>
 
-        {/* Step indicator */}
-        <div style={{ display: "flex", alignItems: "center", gap: 0, background: "#12122a", borderRadius: 10, border: "1px solid #2a2a3e", overflow: "hidden", marginLeft: 12 }}>
-          {[
-            { step: 1, label: "1️⃣ 상품 탐색" },
-            { step: 2, label: "2️⃣ 스토리보드" },
-          ].map((s, i) => (
-            <button key={s.step} onClick={() => setAppStep(s.step)}
-              style={{ background: appStep === s.step ? `${fw.color}22` : "transparent", border: "none", borderRight: i === 0 ? "1px solid #2a2a3e" : "none", padding: "6px 14px", color: appStep === s.step ? fw.color : "#6060a0", fontSize: 11, fontWeight: appStep === s.step ? 700 : 400, cursor: "pointer", transition: "all 0.15s" }}>
-              {s.label}
-            </button>
-          ))}
-        </div>
+        {/* Step indicator — 상품 숏폼 전용 하위 단계 */}
+        {!seriesMode && (
+          <>
+            <div style={{ width: 1, height: 20, background: "#2a2a3e", marginLeft: 12 }} />
+            <span style={{ fontSize: 9, color: "#4a4a6a", marginLeft: 4 }}>상품 숏폼 단계:</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 0, background: "#12122a", borderRadius: 10, border: "1px solid #2a2a3e", overflow: "hidden" }}>
+            {[
+              { step: 1, label: "1️⃣ 상품 탐색" },
+              { step: 2, label: "2️⃣ 스토리보드" },
+            ].map((s, i) => (
+              <button key={s.step} onClick={() => setAppStep(s.step)}
+                style={{ background: appStep === s.step ? `${fw.color}22` : "transparent", border: "none", borderRight: i === 0 ? "1px solid #2a2a3e" : "none", padding: "6px 14px", color: appStep === s.step ? fw.color : "#6060a0", fontSize: 11, fontWeight: appStep === s.step ? 700 : 400, cursor: "pointer", transition: "all 0.15s" }}>
+                {s.label}
+              </button>
+            ))}
+            </div>
+          </>
+        )}
 
         <div style={{ marginLeft: "auto", display: "flex", gap: 7, alignItems: "center" }}>
           <div style={{ background: "#0a1a0a", border: "1px solid #1a3a1a", borderRadius: 7, padding: "4px 10px", fontSize: 10, color: "#50a050", display: "flex", alignItems: "center", gap: 4 }}>
@@ -1440,10 +1927,30 @@ USP: ${product.usp}
           {storyboard && (
             <button onClick={exportAll} style={{ background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 8, padding: "5px 12px", color: "#9090b0", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>⬇ MD 내보내기</button>
           )}
+          {storyboard && (
+            <button onClick={exportToEditor} title="script-voice-editor(대본·목소리·영상 편집기)가 바로 읽을 수 있는 JSON으로 내보내기"
+              style={{ background: "#0a1a2a", border: "1px solid #1a3a5a", borderRadius: 8, padding: "5px 12px", color: "#4a9eff", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>📤 편집기로 내보내기</button>
+          )}
           <button onClick={() => setShowKeys(true)}
             style={{ background: geminiKey ? "#0a1a0a" : "#1a0a0a", border: `1px solid ${geminiKey ? "#03C75A40" : "#ff606040"}`, borderRadius: 8, padding: "5px 12px", color: geminiKey ? "#03C75A" : "#ff6060", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
             🔑 {engine === "gemini" ? "Gemini" : engine === "claude" ? "Claude" : engine === "kimi" ? "Kimi" : "OpenRouter"} · {[geminiKey, claudeKey, kimiKey, orKey].filter(Boolean).length > 0 ? `키 ${[geminiKey, claudeKey, kimiKey, orKey].filter(Boolean).length}개` : "설정"}
           </button>
+
+          {/* 최상위 모드 전환 — 나머지 도구들과는 확실히 분리되도록 맨 끝, 굵은 이중 구분선 뒤에 배치 */}
+          <div style={{ width: 2, height: 26, background: "linear-gradient(to bottom, transparent, #3a3a5a, transparent)", marginLeft: 3, marginRight: 3 }} />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+            <span style={{ fontSize: 8, color: "#4a4a6a", letterSpacing: 1, fontWeight: 700 }}>모드 전환</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 0, background: "#0a0a15", borderRadius: 10, border: "1px solid #33335a", overflow: "hidden", boxShadow: "0 0 0 1px #00000080" }}>
+              <button onClick={() => setSeriesMode(false)}
+                style={{ background: !seriesMode ? `${fw.color}30` : "transparent", border: "none", borderRight: "1px solid #33335a", padding: "7px 15px", color: !seriesMode ? fw.color : "#6060a0", fontSize: 12, fontWeight: !seriesMode ? 800 : 500, cursor: "pointer", transition: "all 0.15s" }}>
+                🛍️ 상품 스토리 숏폼
+              </button>
+              <button onClick={() => setSeriesMode(true)}
+                style={{ background: seriesMode ? "#f59e0b30" : "transparent", border: "none", padding: "7px 15px", color: seriesMode ? "#f59e0b" : "#6060a0", fontSize: 12, fontWeight: seriesMode ? 800 : 500, cursor: "pointer", transition: "all 0.15s" }}>
+                📺 카테고리 숏폼
+              </button>
+            </div>
+          </div>
         </div>
         {(loading || discoverLoading) && (
           <div style={{ fontSize: 11, color: fw.color, display: "flex", alignItems: "center", gap: 5 }}>
@@ -1454,8 +1961,8 @@ USP: ${product.usp}
       </header>
 
       {/* ── STEP 1: 상품 탐색 ── */}
-      {appStep === 1 && (
-        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "18px 16px" }}>
+      {!seriesMode && appStep === 1 && (
+        <div style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 16px" }}>
           {/* Step header */}
           <div style={{ background: "#0d0d1a", border: `1px solid ${fw.color}40`, borderRadius: 16, padding: "16px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ fontSize: 36 }}>🔎</div>
@@ -1467,7 +1974,7 @@ USP: ${product.usp}
             </div>
             {!canDiscover && (
               <div style={{ marginLeft: "auto", background: "#1a1200", border: "1px solid #3a2a00", borderRadius: 9, padding: "8px 12px", fontSize: 11, color: "#f59e0b" }}>
-                ⚠ {discoverPlatform === "naver" ? "네이버 Client ID/Secret 필요" : discoverPlatform === "coupang" ? "쿠팡 ACCESS/SECRET KEY 필요 (또는 Tavily)" : "Tavily API 키 필요"}<br />
+                ⚠ {discoverPlatform === "coupang" ? "쿠팡 ACCESS/SECRET KEY 필요 (또는 Tavily)" : "Tavily API 키 필요"}<br />
                 <button onClick={() => setShowKeys(true)} style={{ background: "none", border: "none", color: "#f59e0b", cursor: "pointer", fontSize: 10, textDecoration: "underline", padding: 0 }}>설정에서 입력 →</button>
               </div>
             )}
@@ -1486,6 +1993,13 @@ USP: ${product.usp}
                   </button>
                 ))}
               </div>
+
+              <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1 }}>분야 선택</div>
+              <select value={CATEGORY_LIST.includes(discoverCategory) ? discoverCategory : ""} onChange={e => e.target.value && setDiscoverCategory(e.target.value)}
+                style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 9, padding: "9px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box" }}>
+                <option value="">직접 입력 (아래 칸에)</option>
+                {CATEGORY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
 
               <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1 }}>카테고리 · 키워드</div>
               <input
@@ -1543,11 +2057,25 @@ USP: ${product.usp}
             <div style={{ background: "#1a0808", border: "1px solid #4a1a1a", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "#ff8080", marginBottom: 12 }}>⚠ {error}</div>
           )}
 
+          {discoverResults.length > 0 && naverTrend && (
+            <div style={{ background: "#0d0d1a", border: "1px solid #1e1e2e", borderRadius: 12, padding: "12px 16px", marginBottom: 12, display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ fontSize: 11, color: "#03C75A", fontWeight: 700, whiteSpace: "nowrap" }}>📈 네이버 검색 관심도<br /><span style={{ color: "#5a5a7a", fontWeight: 400 }}>최근 5개월</span></div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 32, flex: 1 }}>
+                {naverTrend.map((pt, i) => (
+                  <div key={i} title={`${pt.period}: ${pt.ratio}`} style={{ flex: 1, height: `${Math.max(4, pt.ratio)}%`, background: `${fw.color}`, opacity: 0.4 + (0.6 * i) / Math.max(1, naverTrend.length - 1), borderRadius: 2 }} />
+                ))}
+              </div>
+              <div style={{ fontSize: 10, color: "#6b6b8a", whiteSpace: "nowrap" }}>
+                {naverTrend[naverTrend.length - 1]?.ratio > naverTrend[0]?.ratio ? "🔺 상승 추세" : naverTrend[naverTrend.length - 1]?.ratio < naverTrend[0]?.ratio ? "🔻 하락 추세" : "➖ 보합"}
+              </div>
+            </div>
+          )}
+
           {discoverResults.length > 0 && (
             <div>
               <div style={{ fontSize: 12, color: "#6060a0", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ background: `${fw.color}20`, color: fw.color, borderRadius: 5, padding: "2px 8px", fontWeight: 700 }}>{DISCOVER_PLATFORMS.find(p => p.id === discoverPlatform)?.label}</span>
-                <span>"{discoverCategory}" 검색 결과 {discoverResults.length}개 · 종합 점수 순</span>
+                <span>"{discoverCategory}" 검색 결과 {discoverResults.length}개 · 종합 점수 순 (최대 5개 추천)</span>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
                 {discoverResults.map((product, i) => (
@@ -1557,7 +2085,7 @@ USP: ${product.usp}
                     {product.image_url && (
                       <img src={product.image_url} alt={product.name} loading="lazy" referrerPolicy="no-referrer"
                         onError={e => { e.currentTarget.style.display = "none"; }}
-                        style={{ width: "100%", height: 150, objectFit: "cover", display: "block", background: "#070712" }} />
+                        style={{ width: "100%", height: 180, objectFit: "contain", display: "block", background: "#070712" }} />
                     )}
                     <div style={{ padding: 16, position: "relative" }}>
                     {/* Rank badge */}
@@ -1607,6 +2135,10 @@ USP: ${product.usp}
 
                     {/* CTA */}
                     <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                      <button onClick={e => { e.stopPropagation(); copy(product.name, `disc-name-${i}`); }} disabled={!product.name}
+                        style={{ background: "#1e1e2e", border: "1px solid #2a2a3e", borderRadius: 9, padding: "9px 12px", color: copiedKey === `disc-name-${i}` ? "#03C75A" : "#9090b0", fontWeight: 700, fontSize: 12, cursor: product.name ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>
+                        {copiedKey === `disc-name-${i}` ? "✓ 복사됨" : "📋 제목 복사"}
+                      </button>
                       <button onClick={e => { e.stopPropagation(); copy(product.url, `disc-url-${i}`); }} disabled={!product.url}
                         style={{ background: "#1e1e2e", border: "1px solid #2a2a3e", borderRadius: 9, padding: "9px 12px", color: copiedKey === `disc-url-${i}` ? "#03C75A" : "#9090b0", fontWeight: 700, fontSize: 12, cursor: product.url ? "pointer" : "not-allowed", whiteSpace: "nowrap" }}>
                         {copiedKey === `disc-url-${i}` ? "✓ 복사됨" : "🔗 링크 복사"}
@@ -1636,43 +2168,170 @@ USP: ${product.usp}
       )}
 
       {/* ── STEP 2: 스토리보드 ── */}
-      {appStep === 2 && (
-      <div className={`main-layout${storyboard ? "" : " no-result"}`} style={{ gridTemplateColumns: storyboard ? "300px 1fr" : "480px" }}>
+      {(seriesMode || appStep === 2) && (
+      <div className={`main-layout${storyboard ? "" : " no-result"}${seriesMode ? " series-mode" : ""}`}>
 
         {/* ── LEFT ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
 
-          {/* Input */}
-          <div style={{ background: "#0d0d1a", border: "1px solid #1e1e2e", borderRadius: 13, padding: 13 }}>
-            <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 9 }}>상품 입력</div>
-            <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>🔗 URL</div>
-            <input type="url" placeholder="https://smartstore.naver.com/..." value={productUrl} onChange={e => setProductUrl(e.target.value)}
-              style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
-            <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>✏ 상품 설명</div>
-            <textarea placeholder="상품명, 특징, 가격, 타겟 등..." value={productDesc} onChange={e => setProductDesc(e.target.value)} rows={2}
-              style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "vertical", marginBottom: 8 }} />
-            <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>🖼 실제 상품 사진 ({images.length}/{MAX_IMAGES}) <span style={{ color: "#4a4a6a" }}>— 여러 장일수록 AI가 실물을 더 정확히 반영</span></div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))", gap: 6 }}>
-              {images.map((im, i) => (
-                <div key={im.previewUrl} style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #2a2a3e", aspectRatio: "1", background: "#0a0a15" }}>
-                  <img src={im.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: im.base64 ? 1 : 0.4 }} />
-                  <button onClick={() => removeImage(i)}
-                    style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.8)", border: "none", color: "#fff", borderRadius: "50%", width: 18, height: 18, cursor: "pointer", fontSize: 10, lineHeight: 1 }}>✕</button>
-                </div>
-              ))}
-              {images.length < MAX_IMAGES && (
-                <div onClick={() => fileRef.current.click()}
-                  style={{ border: "2px dashed #2a2a3e", borderRadius: 8, background: "#0a0a15", cursor: "pointer", aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", color: "#5a5a7a", fontSize: 20 }}>
-                  +
+          {/* 카테고리 숏폼은 장르를 먼저 정해야 트렌드·소재 추천이 맞물리므로 맨 앞으로 배치 */}
+          {seriesMode && (
+            <div style={{ background: "#1a1200", border: "1px solid #f59e0b40", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 10, color: "#c99a4a", fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>① 장르 선택 — 여기서부터 시작</div>
+                <select value={storyGenre} onChange={e => { setStoryGenre(e.target.value); setShortsTrend(null); setTrendTopics(null); }}
+                  style={{ width: "100%", background: "#12122a", border: "1px solid #f59e0b40", borderRadius: 8, padding: "8px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box" }}>
+                  {STORY_GENRE_GROUPS.map(g => (
+                    <optgroup key={g.group} label={g.group}>
+                      {g.items.map(item => <option key={item} value={item}>{item}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+
+              {storyGenre === "사자성어·고사성어" && (
+                <div>
+                  <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 6 }}>💬 사자성어 추천 (클릭하면 소재로 채워지고 목록에서 사라짐 — 중복 방지)</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+                    {visibleIdioms.map(it => (
+                      <button key={it.idiom} type="button" onClick={() => pickIdiom(it)}
+                        title={it.meaning}
+                        style={{ background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 20, padding: "4px 10px", cursor: "pointer", color: "#7070a0", fontSize: 10, transition: "all 0.15s" }}>
+                        {it.idiom}
+                      </button>
+                    ))}
+                    {visibleIdioms.length === 0 && (
+                      <div style={{ fontSize: 10, color: "#4a4a6a" }}>다 사용했어요 — 아래 버튼으로 새로 받아보세요.</div>
+                    )}
+                  </div>
+                  <button type="button" onClick={fetchMoreIdioms} disabled={idiomLoading}
+                    style={{ background: "none", border: "1px solid #7c3aed50", borderRadius: 8, padding: "6px 0", width: "100%", color: "#a78bfa", fontSize: 11, fontWeight: 700, cursor: idiomLoading ? "not-allowed" : "pointer" }}>
+                    🎲 {idiomLoading ? "받아오는 중..." : "다른 사자성어 더 추천받기 (AI)"}
+                  </button>
                 </div>
               )}
+
+              <div>
+                <button onClick={fetchShortsTrend} disabled={shortsTrendLoading}
+                  style={{ width: "100%", background: "none", border: "1px solid #FF005060", borderRadius: 8, padding: "8px 0", color: "#FF0050", fontSize: 11, fontWeight: 700, cursor: shortsTrendLoading ? "not-allowed" : "pointer" }}>
+                  🔥 {shortsTrendLoading ? "불러오는 중..." : `지금 뜨는 [${storyGenre}] 숏폼 확인`}
+                </button>
+                {shortsTrend && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 8, maxHeight: 180, overflowY: "auto" }}>
+                    {shortsTrend.length === 0 && <div style={{ fontSize: 10, color: "#6a5a3a" }}>검색 결과가 없어요.</div>}
+                    {shortsTrend.map((r, i) => (
+                      <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
+                        style={{ display: "block", fontSize: 10, color: "#c99a4a", textDecoration: "none", background: "#12122a", borderRadius: 6, padding: "5px 8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        🔗 {r.title}
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {trendTopicsLoading && (
+                  <div style={{ fontSize: 10, color: "#c99a4a", marginTop: 8 }}>💡 벤치마크 분석해서 소재 추천 중...</div>
+                )}
+                {trendTopics && trendTopics.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 10, color: "#03C75A", fontWeight: 700, marginBottom: 5 }}>💡 이 트렌드 기반 추천 소재 (클릭하면 소재로 채워짐)</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      {trendTopics.map((t, i) => (
+                        <button key={i} type="button" onClick={() => setStoryTopic(t.title)} title={t.reason}
+                          style={{ textAlign: "left", background: "#0a1a0a", border: "1px solid #03C75A40", borderRadius: 7, padding: "6px 9px", cursor: "pointer" }}>
+                          <div style={{ fontSize: 11, color: "#90d0a0", fontWeight: 600 }}>{t.title}</div>
+                          {t.reason && <div style={{ fontSize: 9, color: "#5a7a5a", marginTop: 2 }}>{t.reason}</div>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ fontSize: 9, color: "#c99a4a", lineHeight: 1.6 }}>
+                매번 생성할 때마다 이 장르의 "다음 화"가 자동으로 이어집니다 — 씬 마지막에 클리프행어(다음 화 예고)가 자동 삽입되고, 이전 화 줄거리를 참고해서 겹치지 않게 이어집니다.
+              </div>
+
+              <div style={{ background: "#12122a", borderRadius: 8, padding: "8px 10px" }}>
+                <div style={{ fontSize: 11, color: "#f59e0b", fontWeight: 700 }}>
+                  📖 [{storyGenre}] 시리즈 · {genreEpisodes.length > 0 ? `${genreEpisodes.length}화까지 진행됨 → 다음은 ${nextEpNumber}화` : "아직 없음 → 1화부터 시작"}
+                </div>
+                {genreEpisodes.length > 0 && (
+                  <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4, maxHeight: 140, overflowY: "auto" }}>
+                    {genreEpisodes.map(e => (
+                      <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#8a7a5a" }}>
+                        <span style={{ flexShrink: 0, color: "#f59e0b", fontWeight: 700 }}>{e.epNumber}화</span>
+                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.productName || "(제목 없음)"}</span>
+                        <button onClick={() => removeStoryEpisode(e.id)} style={{ background: "none", border: "none", color: "#6a5a3a", cursor: "pointer", flexShrink: 0 }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={e => { processFiles(e.target.files); e.target.value = ""; }} />
-          </div>
+          )}
+
+          {/* Input — 상품 숏폼과 스토리 숏폼은 완전히 다른 입력을 씀 */}
+          {!seriesMode ? (
+            <div style={{ background: "#0d0d1a", border: "1px solid #1e1e2e", borderRadius: 13, padding: 13 }}>
+              <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 9 }}>① 상품 입력</div>
+              <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>🔗 URL</div>
+              <input type="url" placeholder="https://smartstore.naver.com/..." value={productUrl} onChange={e => setProductUrl(e.target.value)}
+                style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+              <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>✏ 상품 설명</div>
+              <textarea placeholder="상품명, 특징, 가격, 타겟 등..." value={productDesc} onChange={e => setProductDesc(e.target.value)} rows={2}
+                style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "vertical", marginBottom: 8 }} />
+              <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>🖼 실제 상품 사진 ({images.length}/{MAX_IMAGES}) <span style={{ color: "#4a4a6a" }}>— 여러 장일수록 AI가 실물을 더 정확히 반영</span></div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))", gap: 6 }}>
+                {images.map((im, i) => (
+                  <div key={im.previewUrl} style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #2a2a3e", aspectRatio: "1", background: "#0a0a15" }}>
+                    <img src={im.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: im.base64 ? 1 : 0.4 }} />
+                    <button onClick={() => removeImage(i)}
+                      style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.8)", border: "none", color: "#fff", borderRadius: "50%", width: 18, height: 18, cursor: "pointer", fontSize: 10, lineHeight: 1 }}>✕</button>
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
+                  <div onClick={() => fileRef.current.click()}
+                    style={{ border: "2px dashed #2a2a3e", borderRadius: 8, background: "#0a0a15", cursor: "pointer", aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", color: "#5a5a7a", fontSize: 20 }}>
+                    +
+                  </div>
+                )}
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={e => { processFiles(e.target.files); e.target.value = ""; }} />
+            </div>
+          ) : (
+            <div style={{ background: "#0d0d1a", border: "1px solid #1e1e2e", borderRadius: 13, padding: 13 }}>
+              <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 9 }}>② 소재 입력 (상품 아님, 선택)</div>
+              <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>✏ 소재·주제·명언 (선택 — 비워두면 AI가 장르에 맞게 자동 선정 · 장르를 "사자성어·고사성어"로 선택하면 ① 장르 선택에서 추천 목록이 나와요)</div>
+              <textarea placeholder="예: '삶은 짧지 않다. 당신이 짧게 만들 뿐이다' / 새옹지마 / 에펠탑이 원래 철거될 뻔한 이야기..." value={storyTopic} onChange={e => setStoryTopic(e.target.value)} rows={3}
+                style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "vertical", marginBottom: 8 }} />
+              <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4, marginTop: 4 }}>🖼 참고 이미지 (선택, 스타일 참고용)</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))", gap: 6 }}>
+                {images.map((im, i) => (
+                  <div key={im.previewUrl} style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #2a2a3e", aspectRatio: "1", background: "#0a0a15" }}>
+                    <img src={im.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: im.base64 ? 1 : 0.4 }} />
+                    <button onClick={() => removeImage(i)}
+                      style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.8)", border: "none", color: "#fff", borderRadius: "50%", width: 18, height: 18, cursor: "pointer", fontSize: 10, lineHeight: 1 }}>✕</button>
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
+                  <div onClick={() => fileRef.current.click()}
+                    style={{ border: "2px dashed #2a2a3e", borderRadius: 8, background: "#0a0a15", cursor: "pointer", aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", color: "#5a5a7a", fontSize: 20 }}>
+                    +
+                  </div>
+                )}
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={e => { processFiles(e.target.files); e.target.value = ""; }} />
+            </div>
+          )}
 
           {/* Framework */}
           <div style={{ background: "#0d0d1a", border: "1px solid #1e1e2e", borderRadius: 13, padding: 13 }}>
-            <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 9 }}>스토리 프레임워크</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
+              <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1 }}>{seriesMode ? "③ " : "② "}스토리 프레임워크</div>
+              <button onClick={autoPickFramework} disabled={frameworkAutoLoading}
+                style={{ background: "none", border: "1px solid #7c3aed50", borderRadius: 7, padding: "3px 9px", color: "#a78bfa", fontSize: 10, fontWeight: 700, cursor: frameworkAutoLoading ? "not-allowed" : "pointer" }}>
+                🎲 {frameworkAutoLoading ? "고르는 중..." : "AI 자동 선택"}
+              </button>
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {Object.entries(STORY_FRAMEWORKS).map(([key, f]) => (
                 <button key={key} onClick={() => { setFramework(key); setSelectedScenes(null); }}
@@ -1696,7 +2355,7 @@ USP: ${product.usp}
 
           {/* Platform + Global Style */}
           <div style={{ background: "#0d0d1a", border: "1px solid #1e1e2e", borderRadius: 13, padding: 13 }}>
-            <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>플랫폼 선택</div>
+            <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>{seriesMode ? "④ " : "③ "}플랫폼 선택</div>
 
             {/* Group: 글로벌 숏폼 */}
             <div style={{ fontSize: 9, color: "#4a4a6a", fontWeight: 700, letterSpacing: 1, marginBottom: 5 }}>🌏 글로벌 숏폼</div>
@@ -1771,21 +2430,30 @@ USP: ${product.usp}
             </div>
           </div>
 
+
           {/* Brand tone */}
           <div style={{ background: "#0d0d1a", border: "1px solid #1e1e2e", borderRadius: 12, padding: 12 }}>
-            <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 7 }}>브랜드 톤 (선택)</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+              <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1 }}>{seriesMode ? "⑤ " : "④ "}브랜드 톤 (선택)</div>
+              <button onClick={autoPickBrandTone} disabled={brandToneAutoLoading}
+                style={{ background: "none", border: "1px solid #7c3aed50", borderRadius: 7, padding: "3px 9px", color: "#a78bfa", fontSize: 10, fontWeight: 700, cursor: brandToneAutoLoading ? "not-allowed" : "pointer" }}>
+                🎲 {brandToneAutoLoading ? "만드는 중..." : "AI 자동 생성"}
+              </button>
+            </div>
             <input placeholder="예: 고급스럽고 감성적인, 친근하고 유머러스한..." value={brandTone} onChange={e => setBrandTone(e.target.value)}
               style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
           </div>
 
-          {/* Affiliate link */}
-          <div style={{ background: "#0d0d1a", border: `1px solid ${affiliateLink ? "#f59e0b50" : "#1e1e2e"}`, borderRadius: 12, padding: 12 }}>
-            <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 7 }}>🔗 내 제휴 링크 (선택)</div>
-            <input placeholder="https://link.coupang.com/a/... 또는 제휴 링크" value={affiliateLink}
-              onChange={e => { setAffiliateLink(e.target.value); saveStorage({ ...loadStorage(), affiliateLink: e.target.value }); }}
-              style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
-            <div style={{ fontSize: 9, color: "#4a4a6a", marginTop: 5 }}>자동 저장됨 · MD 내보내기 결과물에 자동 삽입됩니다</div>
-          </div>
+          {/* Affiliate link — 상품 숏폼 전용 (스토리 숏폼과 무관) */}
+          {!seriesMode && (
+            <div style={{ background: "#0d0d1a", border: `1px solid ${affiliateLink ? "#f59e0b50" : "#1e1e2e"}`, borderRadius: 12, padding: 12 }}>
+              <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 7 }}>🔗 내 제휴 링크 (선택)</div>
+              <input placeholder="https://link.coupang.com/a/... 또는 제휴 링크" value={affiliateLink}
+                onChange={e => { setAffiliateLink(e.target.value); saveStorage({ ...loadStorage(), affiliateLink: e.target.value }); }}
+                style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+              <div style={{ fontSize: 9, color: "#4a4a6a", marginTop: 5 }}>자동 저장됨 · MD 내보내기 결과물에 자동 삽입됩니다</div>
+            </div>
+          )}
 
           {/* Policy notice */}
           <div style={{ background: "#0a1a0a", border: "1px solid #1a3a1a", borderRadius: 11, padding: "10px 12px" }}>
@@ -1800,14 +2468,44 @@ USP: ${product.usp}
             </div>
           </div>
 
+          {(() => {
+            const dup = findHistoryDuplicate(productUrl || productDesc);
+            return dup ? (
+              <div style={{ background: "#1a1200", border: "1px solid #3a2a00", borderRadius: 10, padding: "9px 12px", fontSize: 11, color: "#f59e0b", lineHeight: 1.6 }}>
+                ⚠ 이 상품, {new Date(dup.date).toLocaleDateString("ko-KR")}에 [{dup.framework}]로 이미 만든 적 있어요{dup.productName ? ` (${dup.productName})` : ""} — 그대로 진행하면 중복 생성됩니다.
+              </div>
+            ) : null;
+          })()}
+
           {error && <div style={{ background: "#1a0808", border: "1px solid #4a1a1a", borderRadius: 10, padding: "9px 12px", fontSize: 12, color: "#ff8080", lineHeight: 1.6 }}>⚠ {error}</div>}
 
           <button onClick={handleGenerate} disabled={!canGenerate}
             style={{ background: canGenerate ? `linear-gradient(135deg,${fw.color},#7c3aed)` : "#1e1e2e", border: "none", borderRadius: 12, padding: "13px", color: canGenerate ? "#fff" : "#5a5a7a", fontWeight: 700, fontSize: 13, cursor: canGenerate ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {loading
               ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> {loadingStep}</>
-              : `${fw.icon} ${fw.label} 스토리보드 생성 (${fw.scenes.length}씬)`}
+              : seriesMode
+                ? `⑥ 📺 [${storyGenre}] ${nextEpNumber}화 생성 (${fw.scenes.length}씬)`
+                : `⑤ ${fw.icon} ${fw.label} 스토리보드 생성 (${fw.scenes.length}씬)`}
           </button>
+
+          <button onClick={() => setShowHistory(v => !v)}
+            style={{ background: "none", border: "1px solid #2a2a3e", borderRadius: 9, padding: "8px", color: "#8a8ab0", fontSize: 11, cursor: "pointer" }}>
+            📋 생성 기록{seriesMode ? " (카테고리 숏폼)" : " (상품 스토리 숏폼)"} {genHistory.filter(h => !!h.seriesMode === seriesMode).length > 0 ? `(${genHistory.filter(h => !!h.seriesMode === seriesMode).length})` : ""} {showHistory ? "▲" : "▼"}
+          </button>
+          {showHistory && (
+            <div style={{ background: "#0d0d1a", border: "1px solid #1e1e2e", borderRadius: 12, padding: 10, maxHeight: 240, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+              {genHistory.filter(h => !!h.seriesMode === seriesMode).length === 0 && <div style={{ fontSize: 11, color: "#4a4a6a", padding: "8px 4px" }}>아직 만든 기록이 없어요</div>}
+              {genHistory.filter(h => !!h.seriesMode === seriesMode).map(h => (
+                <div key={h.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#12122a", borderRadius: 8, padding: "7px 9px" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#c0c0e0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.productName || h.source || "(제목 없음)"}</div>
+                    <div style={{ fontSize: 9, color: "#5a5a7a", marginTop: 1 }}>{h.framework} · {h.platform}{h.seriesMode ? " · 카테고리 숏폼" : ""} · {new Date(h.date).toLocaleDateString("ko-KR")}</div>
+                  </div>
+                  <button onClick={() => removeHistoryEntry(h.id)} style={{ background: "none", border: "none", color: "#5a5a7a", cursor: "pointer", fontSize: 13, flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── RIGHT: Test Panel ── */}
@@ -1919,24 +2617,69 @@ USP: ${product.usp}
               </div>
             )}
 
+            {/* 업로드 메타데이터: 선택 플랫폼에 맞는 제목·설명·해시태그 */}
+            {videoMetadata && (
+              <div style={{ background: "#0d0d1a", border: "1px solid #2a2a3e", borderRadius: 11, padding: "12px 14px" }}>
+                <div style={{ fontSize: 10, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>🏷 {platCfg.label} 업로드 메타데이터</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 9, color: "#5a5a7a", marginBottom: 3 }}>제목</div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <div style={{ flex: 1, fontSize: 12, color: "#e8e8f0", background: "#12122a", borderRadius: 6, padding: "6px 9px" }}>{videoMetadata.title}</div>
+                      <button onClick={() => copy(videoMetadata.title, "meta-title")} style={{ background: "#1e1e2e", border: "1px solid #2a2a3e", borderRadius: 6, padding: "5px 8px", color: copiedKey === "meta-title" ? "#03C75A" : "#9090b0", fontSize: 10, cursor: "pointer" }}>{copiedKey === "meta-title" ? "✓" : "복사"}</button>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: "#5a5a7a", marginBottom: 3 }}>설명</div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+                      <div style={{ flex: 1, fontSize: 11, color: "#c0c0e0", background: "#12122a", borderRadius: 6, padding: "6px 9px", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{videoMetadata.description}</div>
+                      <button onClick={() => copy(videoMetadata.description, "meta-desc")} style={{ background: "#1e1e2e", border: "1px solid #2a2a3e", borderRadius: 6, padding: "5px 8px", color: copiedKey === "meta-desc" ? "#03C75A" : "#9090b0", fontSize: 10, cursor: "pointer", flexShrink: 0 }}>{copiedKey === "meta-desc" ? "✓" : "복사"}</button>
+                    </div>
+                  </div>
+                  {videoMetadata.hashtags?.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 9, color: "#5a5a7a", marginBottom: 3 }}>해시태그</div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <div style={{ flex: 1, fontSize: 11, color: "#a0c8ff", background: "#12122a", borderRadius: 6, padding: "6px 9px" }}>{videoMetadata.hashtags.join(" ")}</div>
+                        <button onClick={() => copy(videoMetadata.hashtags.join(" "), "meta-tags")} style={{ background: "#1e1e2e", border: "1px solid #2a2a3e", borderRadius: 6, padding: "5px 8px", color: copiedKey === "meta-tags" ? "#03C75A" : "#9090b0", fontSize: 10, cursor: "pointer", flexShrink: 0 }}>{copiedKey === "meta-tags" ? "✓" : "복사"}</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Episode header (스토리 숏폼 모드) */}
+            {seriesMode && currentEpNumber && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 0" }}>
+                <div style={{ height: 1, flex: 1, background: "#f59e0b30" }} />
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", whiteSpace: "nowrap" }}>📺 [{storyGenre}] EPISODE {currentEpNumber}</div>
+                <div style={{ height: 1, flex: 1, background: "#f59e0b30" }} />
+              </div>
+            )}
+
             {/* Scene cards */}
             {fw.scenes.map((sc, i) => (
-              <SceneCard
-                key={sc.id}
-                scene={sc}
-                sceneData={storyboard[sc.id]}
-                frameworkColor={fw.color}
-                styleId={sceneStyles[sc.id] || globalStyle}
-                onCopy={copy}
-                copiedKey={copiedKey}
-                onRegenerate={handleRegenerate}
-                isRegenerating={regenScene === sc.id}
-                isSelected={activeScenes.includes(sc.id)}
-                onToggle={() => toggleScene(sc.id)}
-                onStyleChange={styleId => setSceneStyles(prev => ({ ...prev, [sc.id]: styleId }))}
-                index={i}
-                platCfg={platCfg}
-              />
+              <Fragment key={sc.id}>
+                <SceneCard
+                  scene={sc}
+                  sceneData={storyboard[sc.id]}
+                  frameworkColor={fw.color}
+                  styleId={sceneStyles[sc.id] || globalStyle}
+                  onCopy={copy}
+                  copiedKey={copiedKey}
+                  onRegenerate={handleRegenerate}
+                  isRegenerating={regenScene === sc.id}
+                  isSelected={activeScenes.includes(sc.id)}
+                  onToggle={() => toggleScene(sc.id)}
+                  onStyleChange={styleId => setSceneStyles(prev => ({ ...prev, [sc.id]: styleId }))}
+                  index={i}
+                  platCfg={platCfg}
+                />
+                {seriesMode && i === fw.scenes.length - 1 && (
+                  <div style={{ textAlign: "center", fontSize: 11, color: "#f59e0b", padding: "2px 0 6px", fontStyle: "italic" }}>🔜 다음 화에서 계속... ({nextEpNumber}화 생성하기)</div>
+                )}
+              </Fragment>
             ))}
 
             {/* Footer */}
@@ -1980,12 +2723,15 @@ USP: ${product.usp}
         ::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 4px; }
 
         /* ── 반응형 ── */
-        .main-layout { display: grid; gap: 16px; justify-content: center; align-items: start; padding: 16px 14px; max-width: 1180px; margin: 0 auto; }
+        .main-layout { display: grid; gap: 16px; justify-content: center; align-items: start; padding: 16px 14px; max-width: 1180px; margin: 0 auto; grid-template-columns: 1fr; }
+        .main-layout.no-result { max-width: 680px; }
 
         /* 데스크탑: 좌우 2열 */
         @media (min-width: 900px) {
-          .main-layout { grid-template-columns: 300px 1fr; }
-          .main-layout.no-result { grid-template-columns: 500px; }
+          .main-layout { grid-template-columns: 340px 1fr; max-width: 1400px; }
+          /* 입력 전(결과 없음) 화면: 2열로 나누면 패널 높이가 서로 달라 옆에 큰 빈 공간이 생기고
+             ①②③ 순서도 헷갈리게 되므로, 1열을 유지하되 폭만 넉넉하게 넓혀서 여백만 줄임 */
+          .main-layout.no-result { grid-template-columns: 900px; max-width: 900px; }
         }
 
         /* 태블릿 */

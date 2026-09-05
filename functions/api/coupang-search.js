@@ -55,7 +55,9 @@ export async function onRequestGet(context) {
     price: it.productPrice,
     isRocket: !!it.isRocket,
     category: it.categoryName || "",
+    rank: it.rank || null, // 쿠팡 검색 자체의 인기·관련도 순위 — "잘 팔리는지" 판단의 실제 근거
   }));
 
-  return json({ items });
+  // HTTP 200이어도 쿠팡 응답 바디 안에 rCode(성공 "0" 이외)로 실패를 알리는 경우가 있어 함께 반환
+  return json({ items, rCode: data?.rCode, rMessage: data?.rMessage });
 }
