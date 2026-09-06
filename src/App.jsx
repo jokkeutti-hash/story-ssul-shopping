@@ -1100,6 +1100,7 @@ JSON 배열로만 응답. 마크다운 없이.
   const [hcResult, setHcResult] = useState(null);
   const [hcCards, setHcCards] = useState(loadHcCards);
   const [hcShowDrawer, setHcShowDrawer] = useState(false);
+  const [hcCategory, setHcCategory] = useState("product"); // "product" | "travel"
 
   const fw = STORY_FRAMEWORKS[framework];
   const platCfg = PLATFORM_CONFIGS[platform];
@@ -1565,52 +1566,75 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
     }
   };
 
+  const HC_CATEGORY_CONFIG = {
+    product: {
+      label: "상품",
+      subjectLabel: "제품",
+      placeholder: "예: 삼성 비스포크 AI 스팀 로봇청소기",
+      searchSuffix: "가격 스펙 최저가 할인",
+      commissionAssumption: "고단가 가전·IT 제품 제휴 커미션 통상 3~9% 수준",
+      sourceNote: "실제 제조사(삼성/LG 등) 공식 배포 영상·렌더링 컷을 소스로 쓴다는 전제이므로, 장면 묘사도 그런 공식 홍보영상 톤(깨끗한 스튜디오 배경, 제품 클로즈업, 제조사 브랜드 룩)으로 작성 — 특정 개인 유튜버 영상을 모사하라고 지시하지 말 것.",
+    },
+    travel: {
+      label: "여행",
+      subjectLabel: "여행 상품(숙소·항공권·투어 등)",
+      placeholder: "예: 다낭 하얏트 리젠시 / 제주 왕복 항공권 특가",
+      searchSuffix: "가격 후기 예약 최저가",
+      commissionAssumption: "숙소 예약 제휴 커미션 통상 3~8%, 액티비티·투어 상품은 5~10% 수준 (항공권 단독 예약은 수수료가 매우 낮거나 정액제인 경우가 많음)",
+      sourceNote: "실제 호텔·관광청·항공사·OTA(아고다·야놀자·여기어때·클룩 등)가 공식 배포한 이미지·프로모션 영상을 소스로 쓴다는 전제로 장면을 묘사할 것 — 특정 개인 유튜버·인플루언서 영상을 모사하라고 지시하지 말 것.",
+    },
+  };
+
   // ── 고수수료 숏폼: 실시간 검색 근거 기반 4씬 대본 + SEO + 예상 수수료 ──────
   const fetchHcCard = async () => {
     const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
     if (!apiKey) { setHcError("API 키를 먼저 입력해주세요."); return; }
-    if (!hcProductName.trim()) { setHcError("제품명을 입력해주세요."); return; }
-    if (!tavilyKey) { setHcError("실시간 가격·스펙 확인을 위해 Tavily API 키가 필요합니다."); return; }
+    if (!hcProductName.trim()) { setHcError(hcCategory === "travel" ? "여행지·숙소·항공권 이름을 입력해주세요." : "제품명을 입력해주세요."); return; }
+    if (!tavilyKey) { setHcError("실시간 가격·정보 확인을 위해 Tavily API 키가 필요합니다."); return; }
 
+    const cfg = HC_CATEGORY_CONFIG[hcCategory];
     setHcLoading(true); setHcError(""); setHcResult(null);
     try {
-      setHcLoadingStep("🔍 실시간 가격·스펙 검색 중...");
+      setHcLoadingStep(`🔍 실시간 ${cfg.label} 정보·이미지 검색 중...`);
       const searchRes = await fetch("https://api.tavily.com/search", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${tavilyKey}` },
         body: JSON.stringify({
-          query: `${hcProductName} 가격 스펙 최저가 할인`,
+          query: `${hcProductName} ${cfg.searchSuffix}`,
           max_results: 6,
           search_depth: "advanced",
+          include_images: true,
         }),
       });
       if (!searchRes.ok) throw new Error(`Tavily 검색 오류 ${searchRes.status}`);
       const searchData = await searchRes.json();
       const results = searchData.results || [];
-      if (!results.length) throw new Error("검색 결과가 없습니다. 제품명을 더 정확히 입력해보세요.");
+      if (!results.length) throw new Error("검색 결과가 없습니다. 이름을 더 정확히 입력해보세요.");
       const searchContext = results.map((r, i) => `${i + 1}. ${r.title}\n${(r.content || "").slice(0, 300)}\n출처: ${r.url}`).join("\n\n");
+      // 무료 이미지 — 검색 결과에 실제 딸려있는 이미지만 사용 (다른 제품 사진을 갖다 붙이지 않음)
+      const freeImages = (searchData.images || []).filter(Boolean).slice(0, 4);
 
       setHcLoadingStep("🤖 대본·SEO·수수료 분석 중...");
       const prompt = `${POLICY_RULES}
 
-너는 "검색 기반 구매전환형 쇼핑 숏폼" 전문 카피라이터다. 아래 실시간 검색 결과만 근거로, 제품 "${hcProductName}"의 숏폼 광고 대본과 메타데이터를 만들어라.
+너는 "검색 기반 구매전환형 쇼핑 숏폼" 전문 카피라이터다. 아래 실시간 검색 결과만 근거로, ${cfg.subjectLabel} "${hcProductName}"의 숏폼 광고 대본과 메타데이터를 만들어라.
 
-실시간 검색 결과 (이 안에 없는 가격·스펙은 절대 지어내지 말 것 — 확실하지 않으면 "정보 부족"이라고 표기):
+실시간 검색 결과 (이 안에 없는 가격·정보는 절대 지어내지 말 것 — 확실하지 않으면 "정보 부족"이라고 표기):
 ${searchContext}
 
 절대 규칙:
 1. 검색 결과에 없는 가격·할인율·스펙·수치를 지어내지 말 것. 검색 결과끼리 가격이 다르면 범위로("~대") 표기.
 2. 효능·효과를 단정하는 과장 표현(완치·100%·최고·무조건 등) 금지 — 검색 결과에 있는 사실 기반 장점만 서술.
-3. 실제 브랜드/제품명은 검색 결과에 나온 그대로 정확히 쓰되, 타 브랜드 비방이나 무단 보증 암시 금지.
+3. 실제 브랜드/제품명·상호는 검색 결과에 나온 그대로 정확히 쓰되, 타 브랜드 비방이나 무단 보증 암시 금지.
 4. 이 대본은 제휴 링크를 통한 구매 유도 콘텐츠다 — 공정거래위원회 표시광고법에 따라 video_metadata_description에 "*이 영상은 제휴 마케팅 활동의 일환으로, 파트너스 활동을 통해 일정액의 수수료를 제공받을 수 있습니다." 문구를 반드시 포함할 것.
-5. 실제 제조사(삼성/LG 등) 공식 배포 영상·렌더링 컷을 소스로 쓴다는 전제이므로, 장면 묘사도 그런 공식 홍보영상 톤(깨끗한 스튜디오 배경, 제품 클로즈업, 제조사 브랜드 룩)으로 작성 — 특정 개인 유튜버 영상을 모사하라고 지시하지 말 것.
-6. estimated_commission은 검색된 가격대와 "고단가 가전·IT 제품 제휴 커미션 통상 3~9% 수준" 가정을 근거로 한 대략적 추정치임을 명확히 하고, commission_note에 "실제 수수료율은 가입한 제휴 프로그램(쿠팡파트너스 등) 정책을 반드시 확인하세요"라고 명시할 것.
+5. ${cfg.sourceNote}
+6. estimated_commission은 검색된 가격대와 "${cfg.commissionAssumption}" 가정을 근거로 한 대략적 추정치임을 명확히 하고, commission_note에 "실제 수수료율은 가입한 제휴 프로그램 정책을 반드시 확인하세요"라고 명시할 것.
 
 대본은 정확히 4씬 구조를 따를 것: 가격후킹 → 공감 → 특장점 → CTA. 각 씬은 실제 숏폼에서 소리 내어 읽는 나레이션 문장(구어체, 자연스러운 한국어)으로 작성.
 
 JSON으로만 응답. 마크다운 없이.
 {
-  "product_name": "정확한 제품명(검색결과 기준)",
+  "product_name": "정확한 이름(검색결과 기준)",
   "price_info": "검색결과 기반 가격 요약 (정보 부족하면 명시)",
   "scenes": [
     { "stage": "가격후킹", "duration": "0~5초", "narration": "..." },
@@ -1618,7 +1642,7 @@ JSON으로만 응답. 마크다운 없이.
     { "stage": "특장점", "duration": "15~40초", "narration": "..." },
     { "stage": "CTA", "duration": "40~50초", "narration": "..." }
   ],
-  "seo_title": "정확한 모델명 + 핵심 숫자/이유가 들어간 영상 제목 (검색 노출 최적화, 30자 내외)",
+  "seo_title": "정확한 이름 + 핵심 숫자/이유가 들어간 영상 제목 (검색 노출 최적화, 30자 내외)",
   "thumbnail_hook": "썸네일에 넣을 5~10자 후킹 문구",
   "search_keywords": ["키워드1","키워드2","키워드3","키워드4"],
   "estimated_commission": "예: 9만~18만원",
@@ -1629,7 +1653,7 @@ JSON으로만 응답. 마크다운 없이.
 
       const raw = await callAI(prompt, []);
       const parsed = parseJSON(raw);
-      const card = { ...parsed, id: Date.now(), createdAt: new Date().toISOString() };
+      const card = { ...parsed, id: Date.now(), createdAt: new Date().toISOString(), category: hcCategory, images: freeImages };
       setHcResult(card);
       const updated = [card, ...hcCards];
       setHcCards(updated);
@@ -2081,7 +2105,7 @@ USP: ${product.usp}
                   <span style={{ fontSize: 14 }}>🗃️</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 12, color: "#e8c9a0", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.product_name}</div>
-                    <div style={{ fontSize: 9, color: "#8a7050" }}>{new Date(c.createdAt).toLocaleString("ko-KR")} · 예상 수수료 {c.estimated_commission}</div>
+                    <div style={{ fontSize: 9, color: "#8a7050" }}>{c.category === "travel" ? "✈️" : "🛍️"} {new Date(c.createdAt).toLocaleString("ko-KR")} · 예상 수수료 {c.estimated_commission}</div>
                   </div>
                   <button onClick={e => { e.stopPropagation(); const updated = hcCards.filter(x => x.id !== c.id); setHcCards(updated); saveHcCardsList(updated); }}
                     style={{ background: "none", border: "none", color: "#8a7050", cursor: "pointer", flexShrink: 0 }}>✕</button>
@@ -2090,10 +2114,22 @@ USP: ${product.usp}
             </div>
           )}
 
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            <button onClick={() => setHcCategory("product")}
+              style={{ background: hcCategory === "product" ? "#b8722a30" : "#1a140d", border: `1px solid ${hcCategory === "product" ? "#b8722a" : "#4a3620"}`, borderRadius: 8, padding: "6px 14px", color: hcCategory === "product" ? "#e8a860" : "#8a7050", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              🛍️ 상품
+            </button>
+            <button onClick={() => setHcCategory("travel")}
+              style={{ background: hcCategory === "travel" ? "#b8722a30" : "#1a140d", border: `1px solid ${hcCategory === "travel" ? "#b8722a" : "#4a3620"}`, borderRadius: 8, padding: "6px 14px", color: hcCategory === "travel" ? "#e8a860" : "#8a7050", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              ✈️ 여행
+            </button>
+          </div>
           <div style={{ background: "#1a140d", border: "1px solid #4a3620", borderRadius: 14, padding: 16, marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 220 }}>
-              <div style={{ fontSize: 11, color: "#b89468", fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>제품명 (100만원 이상 고단가 제품 추천)</div>
-              <input value={hcProductName} onChange={e => setHcProductName(e.target.value)} placeholder="예: 삼성 비스포크 AI 스팀 로봇청소기"
+              <div style={{ fontSize: 11, color: "#b89468", fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>
+                {hcCategory === "travel" ? "여행지·숙소·항공권 이름" : "제품명 (100만원 이상 고단가 제품 추천)"}
+              </div>
+              <input value={hcProductName} onChange={e => setHcProductName(e.target.value)} placeholder={HC_CATEGORY_CONFIG[hcCategory].placeholder}
                 onKeyDown={e => e.key === "Enter" && !hcLoading && fetchHcCard()}
                 style={{ width: "100%", background: "#2a1f14", border: "1px solid #6b4a2a", borderRadius: 8, padding: "10px 12px", color: "#f0dcc0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
             </div>
@@ -2117,6 +2153,18 @@ USP: ${product.usp}
               <div style={{ fontSize: 13, fontWeight: 700, color: "#e8c9a0", marginBottom: 10 }}>
                 📇 {hcResult.product_name} <span style={{ fontSize: 11, color: "#8a7050", fontWeight: 400 }}>· {hcResult.price_info}</span>
               </div>
+              {hcResult.images?.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
+                    {hcResult.images.map((img, i) => (
+                      <img key={i} src={img} alt="" loading="lazy" referrerPolicy="no-referrer"
+                        onError={e => { e.currentTarget.style.display = "none"; }}
+                        style={{ height: 110, borderRadius: 8, border: "1px solid #4a3620", flexShrink: 0, background: "#1a140d" }} />
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 9, color: "#6b5638", marginTop: 4 }}>검색 결과에서 무료로 가져온 이미지 — 실제 영상에 쓰기 전 출처 저작권·이용약관을 확인하세요 (제조사·OTA 공식 배포 이미지가 가장 안전).</div>
+                </div>
+              )}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 16 }}>
                 {(hcResult.scenes || []).map((sc, i) => (
                   <div key={i} style={{ background: "#f5e9d0", color: "#3a2a1a", borderRadius: 4, padding: "16px 14px", minHeight: 180, boxShadow: "0 4px 10px rgba(0,0,0,0.4)", position: "relative", fontFamily: "'Courier New', monospace", border: "1px solid #d8c090" }}>
