@@ -893,6 +893,9 @@ export default function App() {
   const [claudeKey, setClaudeKey] = useState(stored.claudeKey || "");
   const [kimiKey, setKimiKey] = useState(stored.kimiKey || "");
   const [tavilyKey, setTavilyKey] = useState(stored.tavilyKey || "");
+  const [pexelsKey, setPexelsKey] = useState(stored.pexelsKey || "");
+  const [naverOpenId, setNaverOpenId] = useState(stored.naverOpenId || "");
+  const [naverOpenSecret, setNaverOpenSecret] = useState(stored.naverOpenSecret || "");
   const [naverClientId, setNaverClientId] = useState(stored.naverClientId || "");
   const [naverClientSecret, setNaverClientSecret] = useState(stored.naverClientSecret || "");
   const [coupangAccessKey, setCoupangAccessKey] = useState(stored.coupangAccessKey || "");
@@ -1133,7 +1136,7 @@ JSON 배열로만 응답. 마크다운 없이.
   }, []);
   const removeImage = idx => setImages(prev => prev.filter((_, i) => i !== idx));
 
-  const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, orKey, claudeKey, kimiKey, tavilyKey, naverClientId, naverClientSecret, coupangAccessKey, coupangSecretKey, affiliateLink }); setShowKeys(false); };
+  const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, orKey, claudeKey, kimiKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, affiliateLink }); setShowKeys(false); };
 
   // refImages: [{ base64, mediaType }] — 여러 장의 실제 상품 사진을 AI에게 함께 전달
   const callAI = useCallback(async (textPrompt, refImages = []) => {
@@ -1577,11 +1580,11 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
     },
     travel: {
       label: "여행",
-      subjectLabel: "여행 상품(숙소·항공권·투어 등)",
-      placeholder: "예: 다낭 하얏트 리젠시 / 제주 왕복 항공권 특가",
-      searchSuffix: "가격 후기 예약 최저가",
-      commissionAssumption: "숙소 예약 제휴 커미션 통상 3~8%, 액티비티·투어 상품은 5~10% 수준 (항공권 단독 예약은 수수료가 매우 낮거나 정액제인 경우가 많음)",
-      sourceNote: "실제 호텔·관광청·항공사·OTA(아고다·야놀자·여기어때·클룩 등)가 공식 배포한 이미지·프로모션 영상을 소스로 쓴다는 전제로 장면을 묘사할 것 — 특정 개인 유튜버·인플루언서 영상을 모사하라고 지시하지 말 것.",
+      subjectLabel: "여행 상품(투어·액티비티·티켓·숙소 등)",
+      placeholder: "예: 다낭 바나힐 투어 / 제주 왕복 항공권 특가",
+      searchSuffix: "가격 후기 예약 최저가 마이리얼트립",
+      commissionAssumption: "마이리얼트립 기준 투어·액티비티·입장권 제휴 커미션 통상 5~10% 수준 (숙소는 3~8%, 항공권 단독 예약은 수수료가 매우 낮거나 정액제인 경우가 많음)",
+      sourceNote: "제휴 플랫폼은 마이리얼트립을 기본으로 전제하고, 실제 관광청·투어 운영사·항공사가 공식 배포한 이미지·프로모션 영상을 소스로 쓴다는 전제로 장면을 묘사할 것 — 특정 개인 유튜버·인플루언서 영상을 모사하라고 지시하지 말 것.",
     },
   };
 
@@ -1611,8 +1614,6 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
       const results = searchData.results || [];
       if (!results.length) throw new Error("검색 결과가 없습니다. 이름을 더 정확히 입력해보세요.");
       const searchContext = results.map((r, i) => `${i + 1}. ${r.title}\n${(r.content || "").slice(0, 300)}\n출처: ${r.url}`).join("\n\n");
-      // 무료 이미지 — 검색 결과에 실제 딸려있는 이미지만 사용 (다른 제품 사진을 갖다 붙이지 않음)
-      const freeImages = (searchData.images || []).filter(Boolean).slice(0, 4);
 
       setHcLoadingStep("🤖 대본·SEO·수수료 분석 중...");
       const prompt = `${POLICY_RULES}
@@ -1629,8 +1630,11 @@ ${searchContext}
 4. 이 대본은 제휴 링크를 통한 구매 유도 콘텐츠다 — 공정거래위원회 표시광고법에 따라 video_metadata_description에 "*이 영상은 제휴 마케팅 활동의 일환으로, 파트너스 활동을 통해 일정액의 수수료를 제공받을 수 있습니다." 문구를 반드시 포함할 것.
 5. ${cfg.sourceNote}
 6. estimated_commission은 검색된 가격대와 "${cfg.commissionAssumption}" 가정을 근거로 한 대략적 추정치임을 명확히 하고, commission_note에 "실제 수수료율은 가입한 제휴 프로그램 정책을 반드시 확인하세요"라고 명시할 것.
+${hcCategory === "travel" ? `7. CTA 씬 나레이션에는 "마이리얼트립"을 자연스럽게 언급할 것 (예: "마이리얼트립에서 예약하기" 같은 톤) — 실제 대사에 억지로 끼워 넣지 말고 구어체로 자연스럽게.` : ""}
 
 대본은 정확히 4씬 구조를 따를 것: 가격후킹 → 공감 → 특장점 → CTA. 각 씬은 실제 숏폼에서 소리 내어 읽는 나레이션 문장(구어체, 자연스러운 한국어)으로 작성.
+
+이미지 검색에 쓸 stock_image_keyword도 함께 만들 것: 영어 2~4단어, Pexels 같은 스톡사진 사이트에서 이 소재를 가장 잘 표현할 수 있는 일반적인 검색어 (특정 브랜드명 없이, 예: "robot vacuum cleaner home" 또는 "danang beach resort").
 
 JSON으로만 응답. 마크다운 없이.
 {
@@ -1648,12 +1652,44 @@ JSON으로만 응답. 마크다운 없이.
   "estimated_commission": "예: 9만~18만원",
   "commission_note": "수수료 추정 근거 및 실제 확인 필요 안내",
   "video_metadata_description": "제휴 고지 문구를 포함한 영상 설명문 2~3문장",
-  "sources": ["실제 참고한 출처 URL 1~2개"]
+  "sources": ["실제 참고한 출처 URL 1~2개"],
+  "stock_image_keyword": "영어 2~4단어 스톡사진 검색어"
 }`;
 
       const raw = await callAI(prompt, []);
       const parsed = parseJSON(raw);
-      const card = { ...parsed, id: Date.now(), createdAt: new Date().toISOString(), category: hcCategory, images: freeImages };
+
+      // 저작권 걱정 없는 진짜 무료 스톡 이미지 (Pexels 라이선스 — 별도 표기 없이 상업적 사용 가능)
+      let stockImages = [];
+      if (pexelsKey && parsed.stock_image_keyword) {
+        setHcLoadingStep("🖼 무료 스톡 이미지 검색 중...");
+        try {
+          const pexelsRes = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(parsed.stock_image_keyword)}&per_page=4`, {
+            headers: { Authorization: pexelsKey },
+          });
+          if (pexelsRes.ok) {
+            const pexelsData = await pexelsRes.json();
+            stockImages = (pexelsData.photos || []).map(p => p.src?.medium).filter(Boolean);
+          }
+        } catch { /* 스톡 이미지 실패해도 카드 생성 자체는 계속 진행 */ }
+      }
+
+      // 검색 결과 이미지 (네이버 이미지 검색 + Tavily) — 실제 저작권 확인 필요, "무료"가 아님
+      let searchImages = [...(searchData.images || []).filter(Boolean)];
+      if (naverOpenId && naverOpenSecret) {
+        try {
+          const naverRes = await fetch(`/api/naver-image-search?q=${encodeURIComponent(hcProductName)}`, {
+            headers: { "X-Naver-Client-Id": naverOpenId, "X-Naver-Client-Secret": naverOpenSecret },
+          });
+          if (naverRes.ok) {
+            const naverData = await naverRes.json();
+            searchImages = [...searchImages, ...(naverData.items || []).map(it => it.link)];
+          }
+        } catch { /* 실패해도 계속 진행 */ }
+      }
+      searchImages = searchImages.slice(0, 4);
+
+      const card = { ...parsed, id: Date.now(), createdAt: new Date().toISOString(), category: hcCategory, stockImages, searchImages };
       setHcResult(card);
       const updated = [card, ...hcCards];
       setHcCards(updated);
@@ -1878,6 +1914,9 @@ USP: ${product.usp}
                 { id: "kimi",    stateKey: "kimiKey",    label: "Kimi K3 (Moonshot)", link: "https://platform.moonshot.ai",                   val: kimiKey,    set: setKimiKey,    ph: "sk-...",       color: "#06b6d4", icon: "K",  req: false, info: "K3(2.8T·1M ctx) · $1 최소 충전 필요" },
                 { id: "or",      stateKey: "orKey",      label: "OpenRouter",         link: "https://openrouter.ai/keys",                     val: orKey,      set: setOrKey,      ph: "sk-or-v1-...", color: "#7c3aed", icon: "OR", req: false, info: "DeepSeek V4 Flash 무료 포함" },
                 { id: "tavily",  stateKey: "tavilyKey",  label: "Tavily (URL 크롤링)", link: "https://tavily.com",                             val: tavilyKey,  set: setTavilyKey,  ph: "tvly-...",     color: "#03C75A", icon: "T",  req: false, info: "무료 1,000/월 · 없어도 동작" },
+                { id: "pexels",  stateKey: "pexelsKey",  label: "Pexels (무료 스톡 이미지)", link: "https://www.pexels.com/api/",                  val: pexelsKey,  set: setPexelsKey,  ph: "Pexels API Key", color: "#05A081", icon: "P",  req: false, info: "저작권 걱정 없는 무료 스톡 이미지 · 고수수료 숏폼에서 사용" },
+                { id: "naverOpenId",     stateKey: "naverOpenId",     label: "네이버 오픈API Client ID",     link: "https://developers.naver.com/apps/#/register", val: naverOpenId,     set: setNaverOpenId,     ph: "Client ID",     color: "#03C75A", icon: "N",  req: false, info: "이미지 검색용 · API HUB와 다른 별도 서비스 · developers.naver.com에서 발급" },
+                { id: "naverOpenSecret", stateKey: "naverOpenSecret", label: "네이버 오픈API Client Secret", link: "https://developers.naver.com/apps/#/register", val: naverOpenSecret, set: setNaverOpenSecret, ph: "Client Secret", color: "#03C75A", icon: "N",  req: false, info: "네이버 오픈API Client ID와 한 쌍" },
                 { id: "naverId",     stateKey: "naverClientId",     label: "네이버 API HUB Key ID",     link: "https://www.ncloud.com/product/applicationService/naverApiHub", val: naverClientId,     set: setNaverClientId,     ph: "X-NCP-APIGW-API-KEY-ID",     color: "#03C75A", icon: "N",  req: false, info: "쇼핑검색 API는 폐지됨 · 검색어트렌드 보조 인사이트용 · 없어도 동작" },
                 { id: "naverSecret", stateKey: "naverClientSecret", label: "네이버 API HUB Secret", link: "https://www.ncloud.com/product/applicationService/naverApiHub", val: naverClientSecret, set: setNaverClientSecret, ph: "X-NCP-APIGW-API-KEY",     color: "#03C75A", icon: "N",  req: false, info: "네이버클라우드플랫폼(NCP) 콘솔에서 발급, Key ID와 한 쌍" },
                 { id: "coupangAccess", stateKey: "coupangAccessKey", label: "쿠팡파트너스 ACCESS KEY", link: "https://partners.coupang.com", val: coupangAccessKey, set: setCoupangAccessKey, ph: "ACCESS KEY", color: "#FF5722", icon: "C",  req: false, info: "상품검색 API · 시간당 10회 제한 · 없어도 동작" },
@@ -1913,7 +1952,7 @@ USP: ${product.usp}
                     {/* Save single key */}
                     <button
                       onClick={() => {
-                        const next = { geminiKey, claudeKey, kimiKey, orKey, tavilyKey, naverClientId, naverClientSecret, coupangAccessKey, coupangSecretKey, affiliateLink };
+                        const next = { geminiKey, claudeKey, kimiKey, orKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, affiliateLink };
                         saveStorage({ ...loadStorage(), ...next });
                       }}
                       disabled={!f.val}
@@ -2153,16 +2192,28 @@ USP: ${product.usp}
               <div style={{ fontSize: 13, fontWeight: 700, color: "#e8c9a0", marginBottom: 10 }}>
                 📇 {hcResult.product_name} <span style={{ fontSize: 11, color: "#8a7050", fontWeight: 400 }}>· {hcResult.price_info}</span>
               </div>
-              {hcResult.images?.length > 0 && (
+              {hcResult.stockImages?.length > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
+                    {hcResult.stockImages.map((img, i) => (
+                      <img key={i} src={img} alt="" loading="lazy" referrerPolicy="no-referrer"
+                        onError={e => { e.currentTarget.style.display = "none"; }}
+                        style={{ height: 110, borderRadius: 8, border: "1px solid #2a6a4a", flexShrink: 0, background: "#1a140d" }} />
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 9, color: "#5aa080", marginTop: 4 }}>✓ Pexels 무료 스톡 이미지 — 저작권 걱정 없이 상업적으로 사용 가능</div>
+                </div>
+              )}
+              {hcResult.searchImages?.length > 0 && (
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ display: "flex", gap: 8, overflowX: "auto" }}>
-                    {hcResult.images.map((img, i) => (
+                    {hcResult.searchImages.map((img, i) => (
                       <img key={i} src={img} alt="" loading="lazy" referrerPolicy="no-referrer"
                         onError={e => { e.currentTarget.style.display = "none"; }}
                         style={{ height: 110, borderRadius: 8, border: "1px solid #4a3620", flexShrink: 0, background: "#1a140d" }} />
                     ))}
                   </div>
-                  <div style={{ fontSize: 9, color: "#6b5638", marginTop: 4 }}>검색 결과에서 무료로 가져온 이미지 — 실제 영상에 쓰기 전 출처 저작권·이용약관을 확인하세요 (제조사·OTA 공식 배포 이미지가 가장 안전).</div>
+                  <div style={{ fontSize: 9, color: "#6b5638", marginTop: 4 }}>⚠ 검색 결과 이미지(네이버·웹) — 저작권이 확인된 게 아니므로 실제 영상에 쓰기 전 출처를 반드시 확인하세요.</div>
                 </div>
               )}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 16 }}>
