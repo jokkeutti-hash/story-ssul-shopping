@@ -421,6 +421,11 @@ const USED_IDIOMS_KEY = "pvps_used_idioms";
 function loadUsedIdioms() { try { return JSON.parse(localStorage.getItem(USED_IDIOMS_KEY)) || []; } catch { return []; } }
 function saveUsedIdiomsList(list) { try { localStorage.setItem(USED_IDIOMS_KEY, JSON.stringify(list.slice(0, 500))); } catch {} }
 
+// ── 고수수료 숏폼 카드 서랍 (색인카드 저장소) ────────────────────────────────
+const HC_CARDS_KEY = "pvps_hc_cards";
+function loadHcCards() { try { return JSON.parse(localStorage.getItem(HC_CARDS_KEY)) || []; } catch { return []; } }
+function saveHcCardsList(list) { try { localStorage.setItem(HC_CARDS_KEY, JSON.stringify(list.slice(0, 300))); } catch {} }
+
 function parseJSON(text) {
   const clean = text.replace(/```json|```/g, "").trim();
   const s = clean.indexOf("{"), e = clean.lastIndexOf("}");
@@ -1086,6 +1091,16 @@ JSON 배열로만 응답. 마크다운 없이.
   const [regenScene, setRegenScene] = useState(null);
   const [seriesMode, setSeriesMode] = useState(false);
 
+  // ── 고수수료 숏폼 (카드 카탈로그) — 완전히 별도 화면, 다른 모드와 상태/렌더 트리 공유 없음 ──
+  const [hcMode, setHcMode] = useState(false);
+  const [hcProductName, setHcProductName] = useState("");
+  const [hcLoading, setHcLoading] = useState(false);
+  const [hcLoadingStep, setHcLoadingStep] = useState("");
+  const [hcError, setHcError] = useState("");
+  const [hcResult, setHcResult] = useState(null);
+  const [hcCards, setHcCards] = useState(loadHcCards);
+  const [hcShowDrawer, setHcShowDrawer] = useState(false);
+
   const fw = STORY_FRAMEWORKS[framework];
   const platCfg = PLATFORM_CONFIGS[platform];
   const activeScenes = selectedScenes || fw.scenes.map(s => s.id);
@@ -1550,6 +1565,83 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
     }
   };
 
+  // ── 고수수료 숏폼: 실시간 검색 근거 기반 4씬 대본 + SEO + 예상 수수료 ──────
+  const fetchHcCard = async () => {
+    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    if (!apiKey) { setHcError("API 키를 먼저 입력해주세요."); return; }
+    if (!hcProductName.trim()) { setHcError("제품명을 입력해주세요."); return; }
+    if (!tavilyKey) { setHcError("실시간 가격·스펙 확인을 위해 Tavily API 키가 필요합니다."); return; }
+
+    setHcLoading(true); setHcError(""); setHcResult(null);
+    try {
+      setHcLoadingStep("🔍 실시간 가격·스펙 검색 중...");
+      const searchRes = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tavilyKey}` },
+        body: JSON.stringify({
+          query: `${hcProductName} 가격 스펙 최저가 할인`,
+          max_results: 6,
+          search_depth: "advanced",
+        }),
+      });
+      if (!searchRes.ok) throw new Error(`Tavily 검색 오류 ${searchRes.status}`);
+      const searchData = await searchRes.json();
+      const results = searchData.results || [];
+      if (!results.length) throw new Error("검색 결과가 없습니다. 제품명을 더 정확히 입력해보세요.");
+      const searchContext = results.map((r, i) => `${i + 1}. ${r.title}\n${(r.content || "").slice(0, 300)}\n출처: ${r.url}`).join("\n\n");
+
+      setHcLoadingStep("🤖 대본·SEO·수수료 분석 중...");
+      const prompt = `${POLICY_RULES}
+
+너는 "검색 기반 구매전환형 쇼핑 숏폼" 전문 카피라이터다. 아래 실시간 검색 결과만 근거로, 제품 "${hcProductName}"의 숏폼 광고 대본과 메타데이터를 만들어라.
+
+실시간 검색 결과 (이 안에 없는 가격·스펙은 절대 지어내지 말 것 — 확실하지 않으면 "정보 부족"이라고 표기):
+${searchContext}
+
+절대 규칙:
+1. 검색 결과에 없는 가격·할인율·스펙·수치를 지어내지 말 것. 검색 결과끼리 가격이 다르면 범위로("~대") 표기.
+2. 효능·효과를 단정하는 과장 표현(완치·100%·최고·무조건 등) 금지 — 검색 결과에 있는 사실 기반 장점만 서술.
+3. 실제 브랜드/제품명은 검색 결과에 나온 그대로 정확히 쓰되, 타 브랜드 비방이나 무단 보증 암시 금지.
+4. 이 대본은 제휴 링크를 통한 구매 유도 콘텐츠다 — 공정거래위원회 표시광고법에 따라 video_metadata_description에 "*이 영상은 제휴 마케팅 활동의 일환으로, 파트너스 활동을 통해 일정액의 수수료를 제공받을 수 있습니다." 문구를 반드시 포함할 것.
+5. 실제 제조사(삼성/LG 등) 공식 배포 영상·렌더링 컷을 소스로 쓴다는 전제이므로, 장면 묘사도 그런 공식 홍보영상 톤(깨끗한 스튜디오 배경, 제품 클로즈업, 제조사 브랜드 룩)으로 작성 — 특정 개인 유튜버 영상을 모사하라고 지시하지 말 것.
+6. estimated_commission은 검색된 가격대와 "고단가 가전·IT 제품 제휴 커미션 통상 3~9% 수준" 가정을 근거로 한 대략적 추정치임을 명확히 하고, commission_note에 "실제 수수료율은 가입한 제휴 프로그램(쿠팡파트너스 등) 정책을 반드시 확인하세요"라고 명시할 것.
+
+대본은 정확히 4씬 구조를 따를 것: 가격후킹 → 공감 → 특장점 → CTA. 각 씬은 실제 숏폼에서 소리 내어 읽는 나레이션 문장(구어체, 자연스러운 한국어)으로 작성.
+
+JSON으로만 응답. 마크다운 없이.
+{
+  "product_name": "정확한 제품명(검색결과 기준)",
+  "price_info": "검색결과 기반 가격 요약 (정보 부족하면 명시)",
+  "scenes": [
+    { "stage": "가격후킹", "duration": "0~5초", "narration": "..." },
+    { "stage": "공감", "duration": "5~15초", "narration": "..." },
+    { "stage": "특장점", "duration": "15~40초", "narration": "..." },
+    { "stage": "CTA", "duration": "40~50초", "narration": "..." }
+  ],
+  "seo_title": "정확한 모델명 + 핵심 숫자/이유가 들어간 영상 제목 (검색 노출 최적화, 30자 내외)",
+  "thumbnail_hook": "썸네일에 넣을 5~10자 후킹 문구",
+  "search_keywords": ["키워드1","키워드2","키워드3","키워드4"],
+  "estimated_commission": "예: 9만~18만원",
+  "commission_note": "수수료 추정 근거 및 실제 확인 필요 안내",
+  "video_metadata_description": "제휴 고지 문구를 포함한 영상 설명문 2~3문장",
+  "sources": ["실제 참고한 출처 URL 1~2개"]
+}`;
+
+      const raw = await callAI(prompt, []);
+      const parsed = parseJSON(raw);
+      const card = { ...parsed, id: Date.now(), createdAt: new Date().toISOString() };
+      setHcResult(card);
+      const updated = [card, ...hcCards];
+      setHcCards(updated);
+      saveHcCardsList(updated);
+    } catch (e) {
+      setHcError(e.message);
+    } finally {
+      setHcLoading(false);
+      setHcLoadingStep("");
+    }
+  };
+
   const handleDiscover = async () => {
     if (!discoverCategory.trim()) { setError("카테고리나 키워드를 입력해주세요."); return; }
     const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
@@ -1894,7 +1986,7 @@ USP: ${product.usp}
         </div>
 
         {/* Step indicator — 상품 숏폼 전용 하위 단계 */}
-        {!seriesMode && (
+        {!hcMode && !seriesMode && (
           <>
             <div style={{ width: 1, height: 20, background: "#2a2a3e", marginLeft: 12 }} />
             <span style={{ fontSize: 9, color: "#4a4a6a", marginLeft: 4 }}>상품 숏폼 단계:</span>
@@ -1941,13 +2033,17 @@ USP: ${product.usp}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
             <span style={{ fontSize: 8, color: "#4a4a6a", letterSpacing: 1, fontWeight: 700 }}>모드 전환</span>
             <div style={{ display: "flex", alignItems: "center", gap: 0, background: "#0a0a15", borderRadius: 10, border: "1px solid #33335a", overflow: "hidden", boxShadow: "0 0 0 1px #00000080" }}>
-              <button onClick={() => setSeriesMode(false)}
-                style={{ background: !seriesMode ? `${fw.color}30` : "transparent", border: "none", borderRight: "1px solid #33335a", padding: "7px 15px", color: !seriesMode ? fw.color : "#6060a0", fontSize: 12, fontWeight: !seriesMode ? 800 : 500, cursor: "pointer", transition: "all 0.15s" }}>
+              <button onClick={() => { setSeriesMode(false); setHcMode(false); }}
+                style={{ background: (!seriesMode && !hcMode) ? `${fw.color}30` : "transparent", border: "none", borderRight: "1px solid #33335a", padding: "7px 15px", color: (!seriesMode && !hcMode) ? fw.color : "#6060a0", fontSize: 12, fontWeight: (!seriesMode && !hcMode) ? 800 : 500, cursor: "pointer", transition: "all 0.15s" }}>
                 🛍️ 상품 스토리 숏폼
               </button>
-              <button onClick={() => setSeriesMode(true)}
-                style={{ background: seriesMode ? "#f59e0b30" : "transparent", border: "none", padding: "7px 15px", color: seriesMode ? "#f59e0b" : "#6060a0", fontSize: 12, fontWeight: seriesMode ? 800 : 500, cursor: "pointer", transition: "all 0.15s" }}>
+              <button onClick={() => { setSeriesMode(true); setHcMode(false); }}
+                style={{ background: (seriesMode && !hcMode) ? "#f59e0b30" : "transparent", border: "none", borderRight: "1px solid #33335a", padding: "7px 15px", color: (seriesMode && !hcMode) ? "#f59e0b" : "#6060a0", fontSize: 12, fontWeight: (seriesMode && !hcMode) ? 800 : 500, cursor: "pointer", transition: "all 0.15s" }}>
                 📺 카테고리 숏폼
+              </button>
+              <button onClick={() => setHcMode(true)}
+                style={{ background: hcMode ? "#b8722a30" : "transparent", border: "none", padding: "7px 15px", color: hcMode ? "#e8a860" : "#6060a0", fontSize: 12, fontWeight: hcMode ? 800 : 500, cursor: "pointer", transition: "all 0.15s" }}>
+                🗂️ 고수수료 숏폼
               </button>
             </div>
           </div>
@@ -1960,8 +2056,125 @@ USP: ${product.usp}
         )}
       </header>
 
+      {/* ── 고수수료 숏폼: 완전히 별도 화면, 다른 모드와 렌더 트리 공유 없음 ── */}
+      {hcMode && (
+        <div style={{ maxWidth: 1400, margin: "0 auto", padding: "18px 16px" }}>
+          <div style={{ background: "linear-gradient(135deg,#3a2a1a,#2a1f14)", border: "1px solid #6b4a2a", borderRadius: 16, padding: "16px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ fontSize: 36 }}>🗂️</div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "#e8c9a0" }}>고수수료 숏폼 — 색인카드 카탈로그</div>
+              <div style={{ fontSize: 12, color: "#b89468", marginTop: 3 }}>
+                피드가 아니라 검색을 공략한다 — 제품명 하나로 구매전환형 대본 4씬 + SEO + 예상 수수료까지
+              </div>
+            </div>
+            <button onClick={() => setHcShowDrawer(v => !v)} style={{ marginLeft: "auto", background: "#2a1f14", border: "1px solid #6b4a2a", borderRadius: 9, padding: "8px 14px", color: "#e8c9a0", fontSize: 12, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
+              🗄 카드 서랍 ({hcCards.length}) {hcShowDrawer ? "▲" : "▼"}
+            </button>
+          </div>
+
+          {hcShowDrawer && (
+            <div style={{ background: "#1a140d", border: "1px solid #4a3620", borderRadius: 12, padding: 12, marginBottom: 16, display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto" }}>
+              {hcCards.length === 0 && <div style={{ fontSize: 11, color: "#6b5638", padding: "8px 4px" }}>아직 만든 카드가 없어요</div>}
+              {hcCards.map(c => (
+                <div key={c.id} onClick={() => setHcResult(c)}
+                  style={{ display: "flex", alignItems: "center", gap: 8, background: "#2a1f14", border: "1px solid #4a3620", borderRadius: 8, padding: "8px 10px", cursor: "pointer" }}>
+                  <span style={{ fontSize: 14 }}>🗃️</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: "#e8c9a0", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.product_name}</div>
+                    <div style={{ fontSize: 9, color: "#8a7050" }}>{new Date(c.createdAt).toLocaleString("ko-KR")} · 예상 수수료 {c.estimated_commission}</div>
+                  </div>
+                  <button onClick={e => { e.stopPropagation(); const updated = hcCards.filter(x => x.id !== c.id); setHcCards(updated); saveHcCardsList(updated); }}
+                    style={{ background: "none", border: "none", color: "#8a7050", cursor: "pointer", flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ background: "#1a140d", border: "1px solid #4a3620", borderRadius: 14, padding: 16, marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontSize: 11, color: "#b89468", fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>제품명 (100만원 이상 고단가 제품 추천)</div>
+              <input value={hcProductName} onChange={e => setHcProductName(e.target.value)} placeholder="예: 삼성 비스포크 AI 스팀 로봇청소기"
+                onKeyDown={e => e.key === "Enter" && !hcLoading && fetchHcCard()}
+                style={{ width: "100%", background: "#2a1f14", border: "1px solid #6b4a2a", borderRadius: 8, padding: "10px 12px", color: "#f0dcc0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+            </div>
+            <button onClick={fetchHcCard} disabled={hcLoading}
+              style={{ background: hcLoading ? "#3a2a1a" : "linear-gradient(135deg,#b8722a,#8a4a1a)", border: "none", borderRadius: 9, padding: "11px 20px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: hcLoading ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+              {hcLoading ? (hcLoadingStep || "생성 중...") : "🗂️ 색인카드 뽑기"}
+            </button>
+          </div>
+
+          {hcError && <div style={{ background: "#2a0d0d", border: "1px solid #6b2020", borderRadius: 10, padding: "9px 12px", fontSize: 12, color: "#ff8080", marginBottom: 16 }}>⚠ {hcError}</div>}
+
+          {!tavilyKey && (
+            <div style={{ background: "#2a1f14", border: "1px solid #6b4a2a", borderRadius: 10, padding: "9px 12px", fontSize: 11, color: "#e8c9a0", marginBottom: 16 }}>
+              ⚠ 실시간 가격·스펙 검색을 위해 Tavily API 키가 필요합니다 —{" "}
+              <button onClick={() => setShowKeys(true)} style={{ background: "none", border: "none", color: "#f0a860", cursor: "pointer", textDecoration: "underline", padding: 0, fontSize: 11 }}>설정에서 입력 →</button>
+            </div>
+          )}
+
+          {hcResult && (
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#e8c9a0", marginBottom: 10 }}>
+                📇 {hcResult.product_name} <span style={{ fontSize: 11, color: "#8a7050", fontWeight: 400 }}>· {hcResult.price_info}</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 16 }}>
+                {(hcResult.scenes || []).map((sc, i) => (
+                  <div key={i} style={{ background: "#f5e9d0", color: "#3a2a1a", borderRadius: 4, padding: "16px 14px", minHeight: 180, boxShadow: "0 4px 10px rgba(0,0,0,0.4)", position: "relative", fontFamily: "'Courier New', monospace", border: "1px solid #d8c090" }}>
+                    <div style={{ fontSize: 9, color: "#8a6a3a", letterSpacing: 1, marginBottom: 4 }}>SCENE {i + 1} · {sc.duration}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#6b3a1a", marginBottom: 8, textTransform: "uppercase" }}>{sc.stage}</div>
+                    <div style={{ fontSize: 12, lineHeight: 1.6 }}>{sc.narration}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ background: "#1a140d", border: "1px solid #4a3620", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontSize: 11, color: "#b89468", fontWeight: 700, letterSpacing: 1 }}>🏷 SEO·수수료 카드</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 9, color: "#8a7050", marginBottom: 3 }}>SEO 제목</div>
+                    <div style={{ fontSize: 12, color: "#f0dcc0" }}>{hcResult.seo_title}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: "#8a7050", marginBottom: 3 }}>썸네일 후킹 문구</div>
+                    <div style={{ fontSize: 12, color: "#f0dcc0" }}>{hcResult.thumbnail_hook}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: "#8a7050", marginBottom: 3 }}>검색 키워드</div>
+                    <div style={{ fontSize: 12, color: "#90c0f0" }}>{(hcResult.search_keywords || []).join(", ")}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, color: "#8a7050", marginBottom: 3 }}>예상 수수료</div>
+                    <div style={{ fontSize: 12, color: "#90d090", fontWeight: 700 }}>{hcResult.estimated_commission}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 9, color: "#8a7050", fontStyle: "italic" }}>{hcResult.commission_note}</div>
+                <div style={{ background: "#2a1f14", borderRadius: 8, padding: "8px 10px", fontSize: 10, color: "#c0a880", lineHeight: 1.6 }}>
+                  📝 {hcResult.video_metadata_description}
+                </div>
+                {hcResult.sources?.length > 0 && (
+                  <div style={{ fontSize: 9, color: "#6b5638" }}>
+                    출처: {hcResult.sources.map((s, i) => <a key={i} href={s} target="_blank" rel="noopener noreferrer" style={{ color: "#8a9ad0", marginRight: 6 }}>[{i + 1}]</a>)}
+                  </div>
+                )}
+                <button onClick={() => copy(JSON.stringify(hcResult, null, 2), "hc-copy")}
+                  style={{ background: "none", border: "1px solid #6b4a2a", borderRadius: 8, padding: "8px 0", color: "#e8c9a0", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
+                  {copiedKey === "hc-copy" ? "✓ 복사됨" : "📋 전체 복사 (JSON)"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!hcResult && !hcLoading && (
+            <div style={{ textAlign: "center", padding: "60px 20px", color: "#6b5638" }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>🗂️</div>
+              <div style={{ fontSize: 13 }}>제품명을 넣고 "색인카드 뽑기"를 눌러보세요</div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── STEP 1: 상품 탐색 ── */}
-      {!seriesMode && appStep === 1 && (
+      {!hcMode && !seriesMode && appStep === 1 && (
         <div style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 16px" }}>
           {/* Step header */}
           <div style={{ background: "#0d0d1a", border: `1px solid ${fw.color}40`, borderRadius: 16, padding: "16px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
@@ -2168,7 +2381,7 @@ USP: ${product.usp}
       )}
 
       {/* ── STEP 2: 스토리보드 ── */}
-      {(seriesMode || appStep === 2) && (
+      {!hcMode && (seriesMode || appStep === 2) && (
       <div className={`main-layout${storyboard ? "" : " no-result"}${seriesMode ? " series-mode" : ""}`}>
 
         {/* ── LEFT ── */}
