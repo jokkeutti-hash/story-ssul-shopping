@@ -444,17 +444,6 @@ async function callGemini(parts, apiKey) {
   return d.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
 }
 
-async function callOpenRouter(messages, apiKey, model) {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}`, "HTTP-Referer": "https://claude.ai", "X-Title": "PVPS Storyboard" },
-    body: JSON.stringify({ model, messages, max_tokens: 8192, temperature: 0.8 }),
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error?.message || `OpenRouter 오류 ${res.status}`); }
-  const d = await res.json();
-  return d.choices?.[0]?.message?.content || "";
-}
-
 async function callClaude(messages, apiKey, model, images = []) {
   const formattedMessages = messages.map((m, i) => {
     if (i === 0 && images.length) {
@@ -483,21 +472,6 @@ async function callClaude(messages, apiKey, model, images = []) {
   return d.content?.map(c => c.text || "").join("") || "";
 }
 
-// ─── Kimi API (Moonshot AI — OpenAI 호환) ────────────────────────────────────
-
-async function callKimi(messages, apiKey, model) {
-  const res = await fetch("https://api.moonshot.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({ model, messages, max_tokens: 8192 }),
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error?.message || `Kimi API 오류 ${res.status}`); }
-  const d = await res.json();
-  return d.choices?.[0]?.message?.content || "";
-}
 
 // ─── Scene Card ───────────────────────────────────────────────────────────────
 
@@ -889,9 +863,7 @@ export default function App() {
 
   // API keys
   const [geminiKey, setGeminiKey] = useState(stored.geminiKey || "");
-  const [orKey, setOrKey] = useState(stored.orKey || "");
   const [claudeKey, setClaudeKey] = useState(stored.claudeKey || "");
-  const [kimiKey, setKimiKey] = useState(stored.kimiKey || "");
   const [tavilyKey, setTavilyKey] = useState(stored.tavilyKey || "");
   const [pexelsKey, setPexelsKey] = useState(stored.pexelsKey || "");
   const [naverOpenId, setNaverOpenId] = useState(stored.naverOpenId || "");
@@ -902,9 +874,7 @@ export default function App() {
   const [coupangSecretKey, setCoupangSecretKey] = useState(stored.coupangSecretKey || "");
   const [affiliateLink, setAffiliateLink] = useState(stored.affiliateLink || "");
   const [engine, setEngine] = useState("claude");
-  const [orModel, setOrModel] = useState("deepseek/deepseek-v4-flash:free");
   const [claudeModel, setClaudeModel] = useState("claude-haiku-4-5-20251001");
-  const [kimiModel, setKimiModel] = useState("kimi-k3");
   const [showKeys, setShowKeys] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [testMode, setTestMode] = useState(false);
@@ -956,7 +926,7 @@ export default function App() {
     setShortsTrendLoading(false);
 
     // 벤치마크 결과를 AI가 보고 실제 쓸 수 있는 제목/소재로 추천
-    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    const apiKey = engine === "gemini" ? geminiKey : claudeKey;
     if (!apiKey || !results.length) return;
     setTrendTopicsLoading(true);
     try {
@@ -1028,7 +998,7 @@ ${listText}
   };
 
   const fetchMoreIdioms = async () => {
-    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    const apiKey = engine === "gemini" ? geminiKey : claudeKey;
     if (!apiKey) { setError("AI API 키를 설정해주세요."); return; }
     setIdiomLoading(true);
     try {
@@ -1136,7 +1106,7 @@ JSON 배열로만 응답. 마크다운 없이.
   }, []);
   const removeImage = idx => setImages(prev => prev.filter((_, i) => i !== idx));
 
-  const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, orKey, claudeKey, kimiKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, affiliateLink }); setShowKeys(false); };
+  const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, claudeKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, affiliateLink }); setShowKeys(false); };
 
   // refImages: [{ base64, mediaType }] — 여러 장의 실제 상품 사진을 AI에게 함께 전달
   const callAI = useCallback(async (textPrompt, refImages = []) => {
@@ -1145,24 +1115,16 @@ JSON 배열로만 응답. 마크다운 없이.
       const parts = imgs.map(im => ({ inline_data: { mime_type: im.mediaType || "image/jpeg", data: im.base64 } }));
       parts.push({ text: textPrompt });
       return callGemini(parts, geminiKey);
-    } else if (engine === "claude") {
-      return callClaude([{ role: "user", content: textPrompt }], claudeKey, claudeModel, imgs);
-    } else if (engine === "kimi") {
-      return callKimi([{ role: "user", content: textPrompt }], kimiKey, kimiModel);
-    } else {
-      const content = imgs.length
-        ? [...imgs.map(im => ({ type: "image_url", image_url: { url: `data:${im.mediaType || "image/jpeg"};base64,${im.base64}` } })), { type: "text", text: textPrompt }]
-        : textPrompt;
-      return callOpenRouter([{ role: "user", content }], orKey, orModel);
     }
-  }, [engine, geminiKey, claudeKey, claudeModel, kimiKey, kimiModel, orKey, orModel]);
+    return callClaude([{ role: "user", content: textPrompt }], claudeKey, claudeModel, imgs);
+  }, [engine, geminiKey, claudeKey, claudeModel]);
 
   // ── AI 자동 선택: 프레임워크 / 브랜드 톤 (스토리마다 다양하게) ──────────────
   const [frameworkAutoLoading, setFrameworkAutoLoading] = useState(false);
   const [brandToneAutoLoading, setBrandToneAutoLoading] = useState(false);
 
   const autoPickFramework = async () => {
-    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    const apiKey = engine === "gemini" ? geminiKey : claudeKey;
     if (!apiKey) { setError("AI API 키를 설정해주세요."); return; }
     const topic = seriesMode ? (storyTopic || storyGenre) : (productDesc || productUrl);
     if (!topic) { setError("소재·주제 또는 상품 정보를 먼저 입력해주세요."); return; }
@@ -1196,7 +1158,7 @@ ${options}
   };
 
   const autoPickBrandTone = async () => {
-    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    const apiKey = engine === "gemini" ? geminiKey : claudeKey;
     if (!apiKey) { setError("AI API 키를 설정해주세요."); return; }
     setBrandToneAutoLoading(true);
     try {
@@ -1289,7 +1251,7 @@ IMPORTANT — 4개 프롬프트 전부 공통 규칙:
 
   // ── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
-    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    const apiKey = engine === "gemini" ? geminiKey : claudeKey;
     if (!apiKey) { setError("API 키를 먼저 입력해주세요."); return; }
     if (!seriesMode && !productUrl && !productDesc && !images.length) { setError("상품 URL, 설명, 또는 이미지를 입력하세요."); return; }
 
@@ -1433,7 +1395,7 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
 
   // ── Regen single ──────────────────────────────────────────────────────────
   const handleRegenerate = async (sceneId) => {
-    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    const apiKey = engine === "gemini" ? geminiKey : claudeKey;
     if (!productInfo || !apiKey) return;
     setRegenScene(sceneId);
     try {
@@ -1535,7 +1497,7 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `storyboard-editor-export-${Date.now()}.json`; a.click();
   };
 
-  const activeKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+  const activeKey = engine === "gemini" ? geminiKey : claudeKey;
   const canGenerate = !loading && !!activeKey && (seriesMode || !!productUrl || !!productDesc || !!images.length);
 
   // ── 1단계: 상품 탐색 ─────────────────────────────────────────────────────
@@ -1590,7 +1552,7 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
 
   // ── 고수수료 숏폼: 실시간 검색 근거 기반 4씬 대본 + SEO + 예상 수수료 ──────
   const fetchHcCard = async () => {
-    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    const apiKey = engine === "gemini" ? geminiKey : claudeKey;
     if (!apiKey) { setHcError("API 키를 먼저 입력해주세요."); return; }
     if (!hcProductName.trim()) { setHcError(hcCategory === "travel" ? "여행지·숙소·항공권 이름을 입력해주세요." : "제품명을 입력해주세요."); return; }
     if (!tavilyKey) { setHcError("실시간 가격·정보 확인을 위해 Tavily API 키가 필요합니다."); return; }
@@ -1704,7 +1666,7 @@ JSON으로만 응답. 마크다운 없이.
 
   const handleDiscover = async () => {
     if (!discoverCategory.trim()) { setError("카테고리나 키워드를 입력해주세요."); return; }
-    const apiKey = engine === "gemini" ? geminiKey : engine === "claude" ? claudeKey : engine === "kimi" ? kimiKey : orKey;
+    const apiKey = engine === "gemini" ? geminiKey : claudeKey;
     if (!apiKey) { setError("AI API 키를 설정해주세요."); return; }
 
     const plat = DISCOVER_PLATFORMS.find(p => p.id === discoverPlatform);
@@ -1863,12 +1825,8 @@ USP: ${product.usp}
       let result;
       if (testEngine === "gemini") {
         result = await callGemini([{ text: TEST_PROMPT }], testKey);
-      } else if (testEngine === "claude") {
-        result = await callClaude([{ role: "user", content: TEST_PROMPT }], testKey, testModelId);
-      } else if (testEngine === "kimi") {
-        result = await callKimi([{ role: "user", content: TEST_PROMPT }], testKey, testModelId);
       } else {
-        result = await callOpenRouter([{ role: "user", content: TEST_PROMPT }], testKey, testModelId);
+        result = await callClaude([{ role: "user", content: TEST_PROMPT }], testKey, testModelId);
       }
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
       let parsed = null;
@@ -1911,8 +1869,6 @@ USP: ${product.usp}
               {[
                 { id: "gemini",  stateKey: "geminiKey",  label: "Google Gemini",     link: "https://aistudio.google.com/app/apikey",         val: geminiKey,  set: setGeminiKey,  ph: "AIzaSy...",    color: "#4285F4", icon: "G",  req: false, info: "무료 1,500/일 · 이미지 분석 가능" },
                 { id: "claude",  stateKey: "claudeKey",  label: "Claude (Anthropic)", link: "https://console.anthropic.com/settings/keys",    val: claudeKey,  set: setClaudeKey,  ph: "sk-ant-...",   color: "#D97706", icon: "C",  req: false, info: "Sonnet 4.5 / Opus 4.6 / Haiku 4.5" },
-                { id: "kimi",    stateKey: "kimiKey",    label: "Kimi K3 (Moonshot)", link: "https://platform.moonshot.ai",                   val: kimiKey,    set: setKimiKey,    ph: "sk-...",       color: "#06b6d4", icon: "K",  req: false, info: "K3(2.8T·1M ctx) · $1 최소 충전 필요" },
-                { id: "or",      stateKey: "orKey",      label: "OpenRouter",         link: "https://openrouter.ai/keys",                     val: orKey,      set: setOrKey,      ph: "sk-or-v1-...", color: "#7c3aed", icon: "OR", req: false, info: "DeepSeek V4 Flash 무료 포함" },
                 { id: "tavily",  stateKey: "tavilyKey",  label: "Tavily (URL 크롤링)", link: "https://tavily.com",                             val: tavilyKey,  set: setTavilyKey,  ph: "tvly-...",     color: "#03C75A", icon: "T",  req: false, info: "무료 1,000/월 · 없어도 동작" },
                 { id: "pexels",  stateKey: "pexelsKey",  label: "Pexels (무료 스톡 이미지)", link: "https://www.pexels.com/api/",                  val: pexelsKey,  set: setPexelsKey,  ph: "Pexels API Key", color: "#05A081", icon: "P",  req: false, info: "저작권 걱정 없는 무료 스톡 이미지 · 고수수료 숏폼에서 사용" },
                 { id: "naverOpenId",     stateKey: "naverOpenId",     label: "네이버 오픈API Client ID",     link: "https://developers.naver.com/apps/#/register", val: naverOpenId,     set: setNaverOpenId,     ph: "Client ID",     color: "#03C75A", icon: "N",  req: false, info: "이미지 검색용 · API HUB와 다른 별도 서비스 · developers.naver.com에서 발급" },
@@ -1952,7 +1908,7 @@ USP: ${product.usp}
                     {/* Save single key */}
                     <button
                       onClick={() => {
-                        const next = { geminiKey, claudeKey, kimiKey, orKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, affiliateLink };
+                        const next = { geminiKey, claudeKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, affiliateLink };
                         saveStorage({ ...loadStorage(), ...next });
                       }}
                       disabled={!f.val}
@@ -1980,8 +1936,6 @@ USP: ${product.usp}
                   {[
                     { id: "gemini",     label: "Gemini",     color: "#4285F4" },
                     { id: "claude",     label: "Claude",     color: "#D97706" },
-                    { id: "kimi",       label: "Kimi K3",    color: "#06b6d4" },
-                    { id: "openrouter", label: "OpenRouter", color: "#7c3aed" },
                   ].map(e => (
                     <button key={e.id} onClick={() => setEngine(e.id)}
                       style={{ background: engine === e.id ? `${e.color}18` : "#0d0d1a", border: `1px solid ${engine === e.id ? e.color : "#2a2a3e"}`, borderRadius: 8, padding: "8px", cursor: "pointer", transition: "all 0.15s" }}>
@@ -2000,22 +1954,6 @@ USP: ${product.usp}
                     <option value="claude-sonnet-4-6">Claude Sonnet 4.6 ($3/$15)</option>
                     <option value="claude-opus-4-7">Claude Opus 4.7 ($5/$25)</option>
                     <option value="claude-opus-4-8">Claude Opus 4.8 ($5/$25)</option>
-                  </select>
-                )}
-                {engine === "kimi" && (
-                  <select value={kimiModel} onChange={e => setKimiModel(e.target.value)}
-                    style={{ width: "100%", background: "#0d0d1a", border: "1px solid #06b6d4aa", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none" }}>
-                    <option value="kimi-k3">Kimi K3 ⭐ (2.8T · 1M ctx)</option>
-                    <option value="kimi-k2.6">Kimi K2.6 (저렴)</option>
-                    <option value="kimi-k2.7-code">Kimi K2.7 Code</option>
-                  </select>
-                )}
-                {engine === "openrouter" && (
-                  <select value={orModel} onChange={e => setOrModel(e.target.value)}
-                    style={{ width: "100%", background: "#0d0d1a", border: "1px solid #7c3aed99", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none" }}>
-                    <option value="deepseek/deepseek-v4-flash:free">DeepSeek V4 Flash ⭐ (무료)</option>
-                    <option value="deepseek/deepseek-r1:free">DeepSeek R1 (무료)</option>
-                    <option value="google/gemini-2.5-flash:free">Gemini 2.5 Flash (무료)</option>
                   </select>
                 )}
               </div>
@@ -2088,7 +2026,7 @@ USP: ${product.usp}
           )}
           <button onClick={() => setShowKeys(true)}
             style={{ background: geminiKey ? "#0a1a0a" : "#1a0a0a", border: `1px solid ${geminiKey ? "#03C75A40" : "#ff606040"}`, borderRadius: 8, padding: "5px 12px", color: geminiKey ? "#03C75A" : "#ff6060", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
-            🔑 {engine === "gemini" ? "Gemini" : engine === "claude" ? "Claude" : engine === "kimi" ? "Kimi" : "OpenRouter"} · {[geminiKey, claudeKey, kimiKey, orKey].filter(Boolean).length > 0 ? `키 ${[geminiKey, claudeKey, kimiKey, orKey].filter(Boolean).length}개` : "설정"}
+            🔑 {engine === "gemini" ? "Gemini" : "Claude"} · {[geminiKey, claudeKey].filter(Boolean).length > 0 ? `키 ${[geminiKey, claudeKey].filter(Boolean).length}개` : "설정"}
           </button>
 
           {/* 최상위 모드 전환 — 나머지 도구들과는 확실히 분리되도록 맨 끝, 굵은 이중 구분선 뒤에 배치 */}
@@ -2839,8 +2777,6 @@ USP: ${product.usp}
                 {[
                   { id: "gemini",     label: "Gemini 2.5 Flash", color: "#4285F4", icon: "G",  key: geminiKey,  model: "gemini-2.5-flash",            free: "무료" },
                   { id: "claude",     label: claudeModel,         color: "#D97706", icon: "C",  key: claudeKey,  model: claudeModel,                    free: "유료" },
-                  { id: "kimi",       label: kimiModel,           color: "#06b6d4", icon: "K",  key: kimiKey,    model: kimiModel,                      free: "$3/M" },
-                  { id: "openrouter", label: "DeepSeek V4 Flash", color: "#7c3aed", icon: "OR", key: orKey,      model: "deepseek/deepseek-v4-flash:free", free: "무료" },
                 ].map(eng => {
                   const res = testResults[eng.id];
                   return (
