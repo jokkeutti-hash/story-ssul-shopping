@@ -479,6 +479,28 @@ function SceneCard({ scene, sceneData, frameworkColor, styleId, onCopy, copiedKe
   const [expanded, setExpanded] = useState(true);
   const imgStyle = IMAGE_STYLES.find(s => s.id === styleId);
   const autoCamera = getAutoCamera(scene.id, styleId);
+  const [genImage, setGenImage] = useState(null);
+  const [genImageLoading, setGenImageLoading] = useState(false);
+  const [genImageError, setGenImageError] = useState("");
+
+  const generateFreeImage = async () => {
+    if (!sceneData?.ai_prompt) return;
+    setGenImageLoading(true); setGenImageError(""); setGenImage(null);
+    try {
+      const res = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: sceneData.ai_prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `이미지 생성 오류 ${res.status}`);
+      setGenImage(data.image);
+    } catch (e) {
+      setGenImageError(e.message);
+    } finally {
+      setGenImageLoading(false);
+    }
+  };
 
   if (!sceneData) return null;
 
@@ -602,7 +624,22 @@ function SceneCard({ scene, sceneData, frameworkColor, styleId, onCopy, copiedKe
                   {copiedKey === `n-${scene.id}` ? "✓" : "🚫 네거티브"}
                 </button>
               )}
+              <button onClick={generateFreeImage} disabled={genImageLoading}
+                style={{ background: "#0a1a2a", border: "1px solid #1a4a6a", borderRadius: 6, padding: "4px 10px", color: "#5ab0e8", fontSize: 11, cursor: genImageLoading ? "not-allowed" : "pointer" }}>
+                {genImageLoading ? "⟳ 생성 중..." : "🎨 무료 이미지 생성"}
+              </button>
             </div>
+            {genImageError && <div style={{ fontSize: 10, color: "#ff8080", marginTop: 6 }}>⚠ {genImageError}</div>}
+            {genImage && (
+              <div style={{ marginTop: 8 }}>
+                <img src={`data:image/jpeg;base64,${genImage}`} alt="" style={{ width: "100%", borderRadius: 8, border: `1px solid ${frameworkColor}30`, display: "block" }} />
+                <a href={`data:image/jpeg;base64,${genImage}`} download={`scene-${scene.id}.jpg`}
+                  style={{ display: "inline-block", marginTop: 6, background: "#1e1e2e", border: "1px solid #2a2a3e", borderRadius: 6, padding: "4px 10px", color: "#9090b0", fontSize: 11, textDecoration: "none" }}>
+                  ⬇ 다운로드
+                </a>
+                <div style={{ fontSize: 9, color: "#4a4a6a", marginTop: 4 }}>Cloudflare Workers AI (FLUX.1-schnell) · 무료 티어로 생성됨</div>
+              </div>
+            )}
           </div>
 
           {/* Video Prompts — 3 platforms */}
