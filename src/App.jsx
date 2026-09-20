@@ -1019,6 +1019,8 @@ ${listText}
   // Input
   const [productUrl, setProductUrl] = useState("");
   const [productDesc, setProductDesc] = useState("");
+  const [isAffiliateUrl, setIsAffiliateUrl] = useState(false);
+  const [affiliatePlatform, setAffiliatePlatform] = useState("coupang");
   const [genHistory, setGenHistory] = useState(loadHistory);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -1569,6 +1571,14 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
     { id: "kakao",    label: "카카오쇼핑",  color: "#FFCD00", query: "site:store.kakao.com",   domain: "store.kakao.com" },
     { id: "toss",     label: "토스쇼핑",   color: "#0064FF", query: "site:toss.im 쇼핑",       domain: "toss.im" },
     { id: "adpick",   label: "애드픽",     color: "#8B5CF6", query: "site:adpick.co.kr",      domain: "adpick.co.kr" },
+  ];
+
+  // ① 상품 입력에서 URL을 "제휴 링크"로 표시할 때 고를 수 있는 제휴 플랫폼 목록
+  const AFFILIATE_PLATFORMS = [
+    { id: "coupang",    label: "쿠팡파트너스" },
+    { id: "adpick",     label: "애드픽" },
+    { id: "myrealtrip", label: "마이리얼트립" },
+    { id: "other",      label: "기타" },
   ];
   const canDiscover = !!tavilyKey
     || (discoverPlatform === "coupang" && !!coupangAccessKey && !!coupangSecretKey);
@@ -2586,9 +2596,33 @@ USP: ${product.usp}
           {!seriesMode ? (
             <div style={{ background: "#0d0d1a", border: "1px solid #1e1e2e", borderRadius: 13, padding: 13 }}>
               <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 9 }}>① 상품 입력</div>
-              <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>🔗 URL</div>
-              <input type="url" placeholder="https://smartstore.naver.com/..." value={productUrl} onChange={e => setProductUrl(e.target.value)}
-                style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+              <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>🔗 URL (제휴 링크도 가능)</div>
+              <input type="url" placeholder="https://smartstore.naver.com/... 또는 제휴 링크" value={productUrl}
+                onChange={e => {
+                  const v = e.target.value;
+                  setProductUrl(v);
+                  if (isAffiliateUrl) { setAffiliateLink(v); saveStorage({ ...loadStorage(), affiliateLink: v }); }
+                }}
+                style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box", marginBottom: 6 }} />
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#8a8aa0", marginBottom: 8, cursor: "pointer" }}>
+                <input type="checkbox" checked={isAffiliateUrl}
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setIsAffiliateUrl(checked);
+                    if (checked && productUrl) { setAffiliateLink(productUrl); saveStorage({ ...loadStorage(), affiliateLink: productUrl }); }
+                  }} />
+                이 URL은 제휴 링크예요 (완성 콘텐츠에 자동으로 삽입되고 공정위 고지 문구가 붙어요)
+              </label>
+              {isAffiliateUrl && (
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
+                  {AFFILIATE_PLATFORMS.map(p => (
+                    <button key={p.id} onClick={() => setAffiliatePlatform(p.id)}
+                      style={{ background: affiliatePlatform === p.id ? "#f59e0b30" : "#12122a", border: `1px solid ${affiliatePlatform === p.id ? "#f59e0b" : "#2a2a3e"}`, borderRadius: 6, padding: "3px 9px", color: affiliatePlatform === p.id ? "#f59e0b" : "#7070a0", fontSize: 10, cursor: "pointer" }}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div style={{ fontSize: 10, color: "#5a5a7a", marginBottom: 4 }}>✏ 상품 설명</div>
               <textarea placeholder="상품명, 특징, 가격, 타겟 등..." value={productDesc} onChange={e => setProductDesc(e.target.value)} rows={2}
                 style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "vertical", marginBottom: 8 }} />
