@@ -1568,6 +1568,7 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
     { id: "naver",    label: "네이버쇼핑",  color: "#03C75A", query: "site:smartstore.naver.com", domain: "smartstore.naver.com" },
     { id: "kakao",    label: "카카오쇼핑",  color: "#FFCD00", query: "site:store.kakao.com",   domain: "store.kakao.com" },
     { id: "toss",     label: "토스쇼핑",   color: "#0064FF", query: "site:toss.im 쇼핑",       domain: "toss.im" },
+    { id: "adpick",   label: "애드픽",     color: "#8B5CF6", query: "site:adpick.co.kr",      domain: "adpick.co.kr" },
   ];
   const canDiscover = !!tavilyKey
     || (discoverPlatform === "coupang" && !!coupangAccessKey && !!coupangSecretKey);
