@@ -2759,11 +2759,11 @@ USP: ${product.usp}
           {/* Affiliate link — 상품 숏폼 전용 (스토리 숏폼과 무관) */}
           {!seriesMode && (
             <div style={{ background: "#0d0d1a", border: `1px solid ${affiliateLink ? "#f59e0b50" : "#1e1e2e"}`, borderRadius: 12, padding: 12 }}>
-              <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 7 }}>🔗 내 제휴 링크 (선택)</div>
-              <input placeholder="https://link.coupang.com/a/... 또는 제휴 링크" value={affiliateLink}
+              <div style={{ fontSize: 11, color: "#6b6b8a", fontWeight: 700, letterSpacing: 1, marginBottom: 7 }}>🔗 내 제휴 링크 (쿠팡파트너스·애드픽 등, 선택)</div>
+              <input placeholder="https://adpick.co.kr/... 또는 link.coupang.com/a/... 등 제휴 링크" value={affiliateLink}
                 onChange={e => { setAffiliateLink(e.target.value); saveStorage({ ...loadStorage(), affiliateLink: e.target.value }); }}
                 style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
-              <div style={{ fontSize: 9, color: "#4a4a6a", marginTop: 5 }}>자동 저장됨 · MD 내보내기 결과물에 자동 삽입됩니다</div>
+              <div style={{ fontSize: 9, color: "#4a4a6a", marginTop: 5 }}>자동 저장됨 · MD 내보내기 결과물에 자동 삽입됩니다 · 애드픽은 API 없이 발급받은 링크를 그대로 붙여넣으면 됩니다</div>
             </div>
           )}
 
