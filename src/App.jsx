@@ -1,5 +1,18 @@
 import { useState, useRef, useCallback, Fragment } from "react";
 
+// 나레이션 문구를 브라우저 내장 음성합성(Web Speech API)으로 바로 들어볼 수 있게 함.
+// 서버/API 키 없이 동작하며, 한국어 음성이 있으면 그걸 우선 사용한다.
+function speakNarration(text) {
+  if (!text || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "ko-KR";
+  const voices = window.speechSynthesis.getVoices();
+  const koVoice = voices.find(v => v.lang?.toLowerCase().startsWith("ko"));
+  if (koVoice) utter.voice = koVoice;
+  window.speechSynthesis.speak(utter);
+}
+
 // ─── YouTube & Image Policy Safety Rules ─────────────────────────────────────
 // 모든 생성 프롬프트에 자동 삽입되는 정책 가이드라인
 
@@ -559,7 +572,13 @@ function SceneCard({ scene, sceneData, frameworkColor, styleId, onCopy, copiedKe
           {/* Narration */}
           {sceneData.narration && (
             <div>
-              <div style={{ fontSize: 10, color: frameworkColor, fontWeight: 700, marginBottom: 5 }}>🎙 나레이션</div>
+              <div style={{ fontSize: 10, color: frameworkColor, fontWeight: 700, marginBottom: 5, display: "flex", alignItems: "center", gap: 6 }}>
+                <span>🎙 나레이션</span>
+                <button onClick={() => speakNarration(sceneData.narration)}
+                  style={{ background: `${frameworkColor}18`, border: `1px solid ${frameworkColor}35`, borderRadius: 5, padding: "1px 7px", color: frameworkColor, fontSize: 9, fontWeight: 700, cursor: "pointer" }}>
+                  ▶ 들어보기
+                </button>
+              </div>
               <p style={{ fontSize: 12, color: "#a0d4ff", lineHeight: 1.6, margin: 0, background: "#0a0a1a", padding: "9px 12px", borderRadius: 8, fontStyle: "italic" }}>"{sceneData.narration}"</p>
             </div>
           )}
@@ -825,7 +844,13 @@ function PreviewModal({ onClose }) {
                         {/* Narration / Text / Duration */}
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 8 }}>
                           <div>
-                            <div style={{ fontSize: 10, color: fw.color, fontWeight: 700, marginBottom: 4 }}>🎙 나레이션</div>
+                            <div style={{ fontSize: 10, color: fw.color, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                              <span>🎙 나레이션</span>
+                              <button onClick={() => speakNarration(data.narration)}
+                                style={{ background: `${fw.color}18`, border: `1px solid ${fw.color}35`, borderRadius: 5, padding: "1px 7px", color: fw.color, fontSize: 9, fontWeight: 700, cursor: "pointer" }}>
+                                ▶ 들어보기
+                              </button>
+                            </div>
                             <div style={{ background: "#0a0a1a", border: `1px solid ${fw.color}20`, borderRadius: 7, padding: "7px 10px", fontSize: 12, color: "#a0d4ff", fontStyle: "italic" }}>"{data.narration}"</div>
                           </div>
                           <div>
@@ -2851,7 +2876,13 @@ USP: ${product.usp}
                           )}
                           {res.result.narration && (
                             <div>
-                              <div style={{ fontSize: 9, color: eng.color, fontWeight: 700, marginBottom: 3 }}>🎙 나레이션</div>
+                              <div style={{ fontSize: 9, color: eng.color, fontWeight: 700, marginBottom: 3, display: "flex", alignItems: "center", gap: 6 }}>
+                                <span>🎙 나레이션</span>
+                                <button onClick={() => speakNarration(res.result.narration)}
+                                  style={{ background: `${eng.color}18`, border: `1px solid ${eng.color}35`, borderRadius: 5, padding: "1px 6px", color: eng.color, fontSize: 8, fontWeight: 700, cursor: "pointer" }}>
+                                  ▶ 들어보기
+                                </button>
+                              </div>
                               <div style={{ fontSize: 11, color: "#a0d4ff", fontStyle: "italic", background: "#0a0a1a", padding: "5px 9px", borderRadius: 6 }}>"{res.result.narration}"</div>
                             </div>
                           )}
