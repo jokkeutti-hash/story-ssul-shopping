@@ -1138,9 +1138,11 @@ JSON 배열로만 응답. 마크다운 없이.
   const [hcCards, setHcCards] = useState(loadHcCards);
   const [hcShowDrawer, setHcShowDrawer] = useState(false);
   const [hcCategory, setHcCategory] = useState("product"); // "product" | "travel"
+  const [hcPlatform, setHcPlatform] = useState("youtube_shorts");
 
   const fw = STORY_FRAMEWORKS[framework];
   const platCfg = PLATFORM_CONFIGS[platform];
+  const hcPlatCfg = PLATFORM_CONFIGS[hcPlatform];
   const activeScenes = selectedScenes || fw.scenes.map(s => s.id);
 
   const copy = (text, key) => { navigator.clipboard.writeText(text); setCopiedKey(key); setTimeout(() => setCopiedKey(null), 1500); };
@@ -1655,6 +1657,12 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
 
 너는 "검색 기반 구매전환형 쇼핑 숏폼" 전문 카피라이터다. 아래 실시간 검색 결과만 근거로, ${cfg.subjectLabel} "${hcProductName}"의 숏폼 광고 대본과 메타데이터를 만들어라.
 
+업로드 플랫폼: ${hcPlatCfg.label}
+- 말투·톤: ${hcPlatCfg.tone}
+- 정책 준수: ${hcPlatCfg.policy}
+- 캡션 팁: ${hcPlatCfg.caption_tip}
+나레이션과 video_metadata_description은 위 플랫폼의 말투·톤에 맞춰 작성할 것.
+
 실시간 검색 결과 (이 안에 없는 가격·정보는 절대 지어내지 말 것 — 확실하지 않으면 "정보 부족"이라고 표기):
 ${searchContext}
 
@@ -1724,7 +1732,7 @@ JSON으로만 응답. 마크다운 없이.
       }
       searchImages = searchImages.slice(0, 4);
 
-      const card = { ...parsed, id: Date.now(), createdAt: new Date().toISOString(), category: hcCategory, stockImages, searchImages };
+      const card = { ...parsed, id: Date.now(), createdAt: new Date().toISOString(), category: hcCategory, platform: hcPlatCfg.label, stockImages, searchImages };
       setHcResult(card);
       const updated = [card, ...hcCards];
       setHcCards(updated);
@@ -2173,6 +2181,24 @@ USP: ${product.usp}
               style={{ background: hcCategory === "travel" ? "#b8722a30" : "#1a140d", border: `1px solid ${hcCategory === "travel" ? "#b8722a" : "#4a3620"}`, borderRadius: 8, padding: "6px 14px", color: hcCategory === "travel" ? "#e8a860" : "#8a7050", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
               ✈️ 여행
             </button>
+            <select value={hcPlatform} onChange={e => setHcPlatform(e.target.value)}
+              style={{ marginLeft: "auto", background: "#1a140d", border: "1px solid #4a3620", borderRadius: 8, padding: "6px 10px", color: "#e8c9a0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              <optgroup label="🌏 글로벌 숏폼">
+                {["youtube_shorts","tiktok","instagram_reels","facebook_reels","x_twitter","threads","pinterest","linkedin"].map(key => (
+                  <option key={key} value={key}>{PLATFORM_CONFIGS[key].icon} {PLATFORM_CONFIGS[key].label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="🇰🇷 국내 숏폼">
+                {["naver_clip","kakaotalk_pung","toss_shortform","kakaostory","danggeun"].map(key => (
+                  <option key={key} value={key}>{PLATFORM_CONFIGS[key].icon} {PLATFORM_CONFIGS[key].label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="🎥 동영상·커머스">
+                {["youtube_long","naver_tv","coupang_live","naver_shopping","kakao_shopping","toss_shopping"].map(key => (
+                  <option key={key} value={key}>{PLATFORM_CONFIGS[key].icon} {PLATFORM_CONFIGS[key].label}</option>
+                ))}
+              </optgroup>
+            </select>
           </div>
           <div style={{ background: "#1a140d", border: "1px solid #4a3620", borderRadius: 14, padding: 16, marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 220 }}>
