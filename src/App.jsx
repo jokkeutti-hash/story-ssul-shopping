@@ -2408,6 +2408,32 @@ USP: ${product.usp}
         </div>
       )}
 
+      {/* ── 빠른 시작: 제휴 블로그 글 주소로 바로 시작 — 1단계 탐색보다 앞, 항상 보임 ── */}
+      {!hcMode && !seriesMode && (
+        <div style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 16px 0" }}>
+          <div style={{ background: "linear-gradient(135deg,#1a0a2a,#0d0d1a)", border: "1px solid #5a2a8a60", borderRadius: 16, padding: "14px 18px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ fontSize: 26 }}>⚡</div>
+            <div style={{ flex: "1 1 260px" }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: "#d0a8ff" }}>제휴 블로그 글 주소로 바로 시작</div>
+              <div style={{ fontSize: 10, color: "#8a7aa8", marginTop: 2 }}>이미 써 둔 제휴 블로그 글 링크를 넣으면, 그 글 내용으로 상품 정보를 바로 가져와서 스토리보드를 만듭니다 — 1단계 탐색 안 거쳐도 됩니다.</div>
+            </div>
+            <input type="url" placeholder="https://blog.naver.com/... 등 제휴 글 주소" value={productUrl}
+              onChange={e => setProductUrl(e.target.value)}
+              style={{ flex: "2 1 280px", background: "#12122a", border: "1px solid #3a2a5a", borderRadius: 8, padding: "9px 12px", color: "#e8e8f0", fontSize: 12, outline: "none" }} />
+            <button onClick={() => {
+                if (!productUrl.trim()) { setError("블로그 글 주소를 입력해주세요."); return; }
+                setIsAffiliateUrl(true);
+                setAffiliateLink(productUrl);
+                saveStorage({ ...loadStorage(), affiliateLink: productUrl });
+                setAppStep(2);
+              }}
+              style={{ background: "linear-gradient(135deg,#7c3aed,#a855f7)", border: "none", borderRadius: 9, padding: "10px 16px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
+              이 글로 시작하기 →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── STEP 1: 상품 탐색 ── */}
       {!hcMode && !seriesMode && appStep === 1 && (
         <div style={{ maxWidth: 1600, margin: "0 auto", padding: "18px 16px" }}>
