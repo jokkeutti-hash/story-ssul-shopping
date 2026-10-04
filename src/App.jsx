@@ -446,9 +446,28 @@ function parseJSON(text) {
   return JSON.parse(clean.slice(s, e + 1));
 }
 
-async function callGemini(parts, apiKey) {
+// 모델 ID가 바뀌거나 종료돼도 여기 하나만 고치면 전체에 반영됨.
+// 설정 패널의 입력창은 datalist라 이 목록 밖의 ID도 자유롭게 입력 가능 —
+// 새 모델이 나와도 코드 수정 없이 바로 쓸 수 있게 하기 위함.
+const MODEL_DEFAULTS = {
+  gemini: "gemini-2.5-flash",
+  claude: "claude-haiku-4-5-20251001",
+};
+const GEMINI_MODEL_OPTIONS = [
+  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (추천·무료 한도 넉넉함)" },
+  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (고품질, 무료 한도 적음)" },
+];
+const CLAUDE_MODEL_OPTIONS = [
+  { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 ⭐ ($1/$5 — 추천)" },
+  { value: "claude-sonnet-4-5", label: "Claude Sonnet 4.5 ($3/$15)" },
+  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 ($3/$15)" },
+  { value: "claude-opus-4-7", label: "Claude Opus 4.7 ($5/$25)" },
+  { value: "claude-opus-4-8", label: "Claude Opus 4.8 ($5/$25)" },
+];
+
+async function callGemini(parts, apiKey, model) {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model || MODEL_DEFAULTS.gemini}:generateContent?key=${apiKey}`,
     { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { maxOutputTokens: 8192, temperature: 0.8 } }) }
   );
@@ -937,7 +956,8 @@ export default function App() {
   const [youtubeApiKey, setYoutubeApiKey] = useState(stored.youtubeApiKey || "");
   const [affiliateLink, setAffiliateLink] = useState(stored.affiliateLink || "");
   const [engine, setEngine] = useState("claude");
-  const [claudeModel, setClaudeModel] = useState("claude-haiku-4-5-20251001");
+  const [geminiModel, setGeminiModel] = useState(stored.geminiModel || MODEL_DEFAULTS.gemini);
+  const [claudeModel, setClaudeModel] = useState(stored.claudeModel || MODEL_DEFAULTS.claude);
   const [showKeys, setShowKeys] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [testMode, setTestMode] = useState(false);
@@ -1181,7 +1201,7 @@ JSON 배열로만 응답. 마크다운 없이.
   }, []);
   const removeImage = idx => setImages(prev => prev.filter((_, i) => i !== idx));
 
-  const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, claudeKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, youtubeApiKey, affiliateLink }); setShowKeys(false); };
+  const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, claudeKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, youtubeApiKey, affiliateLink, geminiModel, claudeModel }); setShowKeys(false); };
 
   // refImages: [{ base64, mediaType }] — 여러 장의 실제 상품 사진을 AI에게 함께 전달
   const callAI = useCallback(async (textPrompt, refImages = []) => {
@@ -1189,10 +1209,10 @@ JSON 배열로만 응답. 마크다운 없이.
     if (engine === "gemini") {
       const parts = imgs.map(im => ({ inline_data: { mime_type: im.mediaType || "image/jpeg", data: im.base64 } }));
       parts.push({ text: textPrompt });
-      return callGemini(parts, geminiKey);
+      return callGemini(parts, geminiKey, geminiModel);
     }
     return callClaude([{ role: "user", content: textPrompt }], claudeKey, claudeModel, imgs);
-  }, [engine, geminiKey, claudeKey, claudeModel]);
+  }, [engine, geminiKey, geminiModel, claudeKey, claudeModel]);
 
   // ── AI 자동 선택: 프레임워크 / 브랜드 톤 (스토리마다 다양하게) ──────────────
   const [frameworkAutoLoading, setFrameworkAutoLoading] = useState(false);
@@ -2056,17 +2076,28 @@ USP: ${product.usp}
                   ))}
                 </div>
                 {engine === "gemini" && (
-                  <div style={{ fontSize: 10, color: "#4285F4", background: "#4285F418", borderRadius: 7, padding: "6px 10px" }}>Gemini 2.5 Flash 자동 사용</div>
+                  <>
+                    <input list="geminiModelOptions" value={geminiModel}
+                      onChange={e => { setGeminiModel(e.target.value); saveStorage({ ...loadStorage(), geminiModel: e.target.value }); }}
+                      placeholder="모델 ID (목록에서 고르거나 새 모델 ID 직접 입력)"
+                      style={{ width: "100%", background: "#0d0d1a", border: "1px solid #4285F4aa", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                    <datalist id="geminiModelOptions">
+                      {GEMINI_MODEL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </datalist>
+                    <div style={{ fontSize: 9, color: "#4a4a6a", marginTop: 5 }}>모델이 종료되거나 새 모델이 나오면 여기에 정확한 모델 ID를 직접 입력하면 바로 반영됩니다.</div>
+                  </>
                 )}
                 {engine === "claude" && (
-                  <select value={claudeModel} onChange={e => setClaudeModel(e.target.value)}
-                    style={{ width: "100%", background: "#0d0d1a", border: "1px solid #D97706aa", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none" }}>
-                    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 ⭐ ($1/$5 — 추천)</option>
-                    <option value="claude-sonnet-4-5">Claude Sonnet 4.5 ($3/$15)</option>
-                    <option value="claude-sonnet-4-6">Claude Sonnet 4.6 ($3/$15)</option>
-                    <option value="claude-opus-4-7">Claude Opus 4.7 ($5/$25)</option>
-                    <option value="claude-opus-4-8">Claude Opus 4.8 ($5/$25)</option>
-                  </select>
+                  <>
+                    <input list="claudeModelOptions" value={claudeModel}
+                      onChange={e => { setClaudeModel(e.target.value); saveStorage({ ...loadStorage(), claudeModel: e.target.value }); }}
+                      placeholder="모델 ID (목록에서 고르거나 새 모델 ID 직접 입력)"
+                      style={{ width: "100%", background: "#0d0d1a", border: "1px solid #D97706aa", borderRadius: 7, padding: "7px 10px", color: "#e8e8f0", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                    <datalist id="claudeModelOptions">
+                      {CLAUDE_MODEL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </datalist>
+                    <div style={{ fontSize: 9, color: "#4a4a6a", marginTop: 5 }}>모델이 종료되거나 새 모델이 나오면 여기에 정확한 모델 ID를 직접 입력하면 바로 반영됩니다.</div>
+                  </>
                 )}
               </div>
 
@@ -3023,7 +3054,7 @@ USP: ${product.usp}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {[
-                  { id: "gemini",     label: "Gemini 2.5 Flash", color: "#4285F4", icon: "G",  key: geminiKey,  model: "gemini-2.5-flash",            free: "무료" },
+                  { id: "gemini",     label: geminiModel,         color: "#4285F4", icon: "G",  key: geminiKey,  model: geminiModel,                    free: "무료" },
                   { id: "claude",     label: claudeModel,         color: "#D97706", icon: "C",  key: claudeKey,  model: claudeModel,                    free: "유료" },
                 ].map(eng => {
                   const res = testResults[eng.id];
