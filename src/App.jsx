@@ -934,6 +934,7 @@ export default function App() {
   const [naverClientSecret, setNaverClientSecret] = useState(stored.naverClientSecret || "");
   const [coupangAccessKey, setCoupangAccessKey] = useState(stored.coupangAccessKey || "");
   const [coupangSecretKey, setCoupangSecretKey] = useState(stored.coupangSecretKey || "");
+  const [youtubeApiKey, setYoutubeApiKey] = useState(stored.youtubeApiKey || "");
   const [affiliateLink, setAffiliateLink] = useState(stored.affiliateLink || "");
   const [engine, setEngine] = useState("claude");
   const [claudeModel, setClaudeModel] = useState("claude-haiku-4-5-20251001");
@@ -1140,6 +1141,14 @@ JSON 배열로만 응답. 마크다운 없이.
   const [hcCategory, setHcCategory] = useState("product"); // "product" | "travel"
   const [hcPlatform, setHcPlatform] = useState("youtube_shorts");
 
+  // ── 유튜브 트렌드 확인 — 완전히 별도 패널, 스토리보드 생성과 상태 공유 없음 ──
+  const [showYtTrends, setShowYtTrends] = useState(false);
+  const [ytQuery, setYtQuery] = useState("");
+  const [ytMode, setYtMode] = useState("trending"); // "trending" | "search"
+  const [ytResults, setYtResults] = useState([]);
+  const [ytLoading, setYtLoading] = useState(false);
+  const [ytError, setYtError] = useState("");
+
   const fw = STORY_FRAMEWORKS[framework];
   const platCfg = PLATFORM_CONFIGS[platform];
   const hcPlatCfg = PLATFORM_CONFIGS[hcPlatform];
@@ -1172,7 +1181,7 @@ JSON 배열로만 응답. 마크다운 없이.
   }, []);
   const removeImage = idx => setImages(prev => prev.filter((_, i) => i !== idx));
 
-  const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, claudeKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, affiliateLink }); setShowKeys(false); };
+  const saveKeys = () => { saveStorage({ ...loadStorage(), geminiKey, claudeKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, youtubeApiKey, affiliateLink }); setShowKeys(false); };
 
   // refImages: [{ base64, mediaType }] — 여러 장의 실제 상품 사진을 AI에게 함께 전달
   const callAI = useCallback(async (textPrompt, refImages = []) => {
@@ -1606,6 +1615,27 @@ ${prevSummary ? `이전 화까지의 줄거리(절대 겹치지 않게 자연스
     }
   };
 
+  // ── 유튜브 트렌드 확인 — "지금 뜨는 것"(국내 인기) 또는 키워드 검색(최근 30일, 조회수순) ──
+  const fetchYtTrends = async () => {
+    if (!youtubeApiKey) { setYtError("YouTube Data API 키가 필요합니다. 설정에서 입력해주세요."); return; }
+    if (ytMode === "search" && !ytQuery.trim()) { setYtError("검색어를 입력해주세요."); return; }
+    setYtLoading(true); setYtError(""); setYtResults([]);
+    try {
+      const res = await fetch("/api/youtube-trends", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Youtube-Api-Key": youtubeApiKey },
+        body: JSON.stringify({ mode: ytMode, q: ytQuery }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `YouTube API 오류 ${res.status}`);
+      setYtResults(data.videos || []);
+    } catch (e) {
+      setYtError(e.message);
+    } finally {
+      setYtLoading(false);
+    }
+  };
+
   const HC_CATEGORY_CONFIG = {
     product: {
       label: "상품",
@@ -1958,6 +1988,7 @@ USP: ${product.usp}
                 { id: "naverSecret", stateKey: "naverClientSecret", label: "네이버 API HUB Secret", link: "https://www.ncloud.com/product/applicationService/naverApiHub", val: naverClientSecret, set: setNaverClientSecret, ph: "X-NCP-APIGW-API-KEY",     color: "#03C75A", icon: "N",  req: false, info: "네이버클라우드플랫폼(NCP) 콘솔에서 발급, Key ID와 한 쌍" },
                 { id: "coupangAccess", stateKey: "coupangAccessKey", label: "쿠팡파트너스 ACCESS KEY", link: "https://partners.coupang.com", val: coupangAccessKey, set: setCoupangAccessKey, ph: "ACCESS KEY", color: "#FF5722", icon: "C",  req: false, info: "상품검색 API · 시간당 10회 제한 · 없어도 동작" },
                 { id: "coupangSecret", stateKey: "coupangSecretKey", label: "쿠팡파트너스 SECRET KEY", link: "https://partners.coupang.com", val: coupangSecretKey, set: setCoupangSecretKey, ph: "SECRET KEY", color: "#FF5722", icon: "C",  req: false, info: "쿠팡 ACCESS KEY와 한 쌍" },
+                { id: "youtube", stateKey: "youtubeApiKey", label: "YouTube Data API 키", link: "https://console.cloud.google.com/apis/library/youtube.googleapis.com", val: youtubeApiKey, set: setYoutubeApiKey, ph: "AIzaSy...", color: "#FF0000", icon: "Y",  req: false, info: "무료 1만 유닛/일(검색 100씩 소모) · 유튜브 트렌드 확인용" },
               ].map(f => (
                 <div key={f.id} style={{ background: "#12122a", border: `1px solid ${f.val ? f.color + "50" : "#2a2a3e"}`, borderRadius: 13, padding: 14, transition: "border 0.2s" }}>
                   {/* Label row */}
@@ -1989,7 +2020,7 @@ USP: ${product.usp}
                     {/* Save single key */}
                     <button
                       onClick={() => {
-                        const next = { geminiKey, claudeKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, affiliateLink };
+                        const next = { geminiKey, claudeKey, tavilyKey, pexelsKey, naverClientId, naverClientSecret, naverOpenId, naverOpenSecret, coupangAccessKey, coupangSecretKey, youtubeApiKey, affiliateLink };
                         saveStorage({ ...loadStorage(), ...next });
                       }}
                       disabled={!f.val}
@@ -2059,6 +2090,70 @@ USP: ${product.usp}
         </div>
       )}
 
+      {showYtTrends && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, overflowY: "auto" }}>
+          <div style={{ background: "#0d0d1a", border: "1px solid #2a2a3e", borderRadius: 20, width: "100%", maxWidth: 640, marginTop: "auto", marginBottom: "auto" }}>
+            <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid #1e1e2e", display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 34, height: 34, background: "#ff0000", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📈</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#e8e8f0" }}>유튜브 트렌드 확인</div>
+                <div style={{ fontSize: 10, color: "#5a5a7a", marginTop: 1 }}>스토리보드 만들기 전에 지금 뜨는 주제·형식을 참고하세요</div>
+              </div>
+              <button onClick={() => setShowYtTrends(false)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#6060a0", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>✕</button>
+            </div>
+
+            <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {!youtubeApiKey && (
+                <div style={{ background: "#1a0a0a", border: "1px solid #5a1a1a", borderRadius: 10, padding: "9px 12px", fontSize: 11, color: "#ff8080" }}>
+                  ⚠ YouTube Data API 키가 필요합니다 —{" "}
+                  <button onClick={() => { setShowYtTrends(false); setShowKeys(true); }} style={{ background: "none", border: "none", color: "#ff6060", cursor: "pointer", textDecoration: "underline", padding: 0, fontSize: 11 }}>설정에서 입력 →</button>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => setYtMode("trending")}
+                  style={{ background: ytMode === "trending" ? "#ff000030" : "#12122a", border: `1px solid ${ytMode === "trending" ? "#ff0000" : "#2a2a3e"}`, borderRadius: 8, padding: "6px 14px", color: ytMode === "trending" ? "#ff6060" : "#7070a0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  🔥 국내 지금 뜨는 영상
+                </button>
+                <button onClick={() => setYtMode("search")}
+                  style={{ background: ytMode === "search" ? "#ff000030" : "#12122a", border: `1px solid ${ytMode === "search" ? "#ff0000" : "#2a2a3e"}`, borderRadius: 8, padding: "6px 14px", color: ytMode === "search" ? "#ff6060" : "#7070a0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  🔍 키워드로 검색 (최근 30일, 조회수순)
+                </button>
+              </div>
+
+              {ytMode === "search" && (
+                <input value={ytQuery} onChange={e => setYtQuery(e.target.value)} placeholder="예: 로봇청소기, 다낭 여행"
+                  onKeyDown={e => e.key === "Enter" && !ytLoading && fetchYtTrends()}
+                  style={{ width: "100%", background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 8, padding: "9px 12px", color: "#e8e8f0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+              )}
+
+              <button onClick={fetchYtTrends} disabled={ytLoading}
+                style={{ background: ytLoading ? "#2a0a0a" : "linear-gradient(135deg,#ff0000,#b80000)", border: "none", borderRadius: 9, padding: "10px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: ytLoading ? "not-allowed" : "pointer" }}>
+                {ytLoading ? "불러오는 중..." : "📈 확인하기"}
+              </button>
+
+              {ytError && <div style={{ background: "#2a0d0d", border: "1px solid #6b2020", borderRadius: 10, padding: "9px 12px", fontSize: 12, color: "#ff8080" }}>⚠ {ytError}</div>}
+
+              {ytResults.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 420, overflowY: "auto" }}>
+                  {ytResults.map(v => (
+                    <a key={v.id} href={v.url} target="_blank" rel="noopener noreferrer"
+                      style={{ display: "flex", gap: 10, background: "#12122a", border: "1px solid #2a2a3e", borderRadius: 10, padding: 8, textDecoration: "none" }}>
+                      {v.thumbnail && <img src={v.thumbnail} alt="" style={{ width: 100, height: 56, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, color: "#e8e8f0", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{v.title}</div>
+                        <div style={{ fontSize: 10, color: "#6b6b8a", marginTop: 3 }}>{v.channel}</div>
+                        <div style={{ fontSize: 10, color: "#ff6060", marginTop: 2, fontWeight: 700 }}>👁 {v.viewCount.toLocaleString()}회</div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header style={{ borderBottom: "1px solid #1a1a28", padding: "13px 20px", display: "flex", alignItems: "center", gap: 10, position: "sticky", top: 0, background: "#07070f", zIndex: 100 }}>
         <div style={{ width: 32, height: 32, background: `linear-gradient(135deg,${fw.color},#7c3aed)`, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🎬</div>
@@ -2105,6 +2200,10 @@ USP: ${product.usp}
             <button onClick={exportToEditor} title="script-voice-editor(대본·목소리·영상 편집기)가 바로 읽을 수 있는 JSON으로 내보내기"
               style={{ background: "#0a1a2a", border: "1px solid #1a3a5a", borderRadius: 8, padding: "5px 12px", color: "#4a9eff", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>📤 편집기로 내보내기</button>
           )}
+          <button onClick={() => setShowYtTrends(true)}
+            style={{ background: "#1a0a0a", border: "1px solid #5a1a1a40", borderRadius: 8, padding: "5px 12px", color: "#ff6060", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
+            📈 유튜브 트렌드
+          </button>
           <button onClick={() => setShowKeys(true)}
             style={{ background: geminiKey ? "#0a1a0a" : "#1a0a0a", border: `1px solid ${geminiKey ? "#03C75A40" : "#ff606040"}`, borderRadius: 8, padding: "5px 12px", color: geminiKey ? "#03C75A" : "#ff6060", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
             🔑 {engine === "gemini" ? "Gemini" : "Claude"} · {[geminiKey, claudeKey].filter(Boolean).length > 0 ? `키 ${[geminiKey, claudeKey].filter(Boolean).length}개` : "설정"}
